@@ -90,7 +90,8 @@ $templeUnlocked = $score >= 250;
             <p>THE LOST ISLAND</p>
         </div>
 
-        <a href="../dashboard.php" class="btn">Dashboard</a>
+        <a href="../leaderboard.php" class="btn">Leaderboard</a>
+<a href="../dashboard.php" class="btn">Dashboard</a>
     </header>
 
     <br><br>
