@@ -56,6 +56,32 @@ if (
     exit;
 }
 
+// Generate a random game event
+$events = [
+    [
+        'name' => 'Tropical Storm',
+        'description' => 'A tropical storm reduced your energy by 10!',
+        'type' => 'energy_loss',
+        'amount' => 10
+    ],
+    [
+        'name' => 'Bonus Treasure',
+        'description' => 'You discovered bonus treasure worth 10 coins!',
+        'type' => 'bonus_coins',
+        'amount' => 10
+    ],
+    [
+        'name' => 'Energy Boost',
+        'description' => 'You discovered an energy boost worth 10 energy!',
+        'type' => 'energy_boost',
+        'amount' => 10
+    ]
+];
+
+$randomEvent = $events[random_int(0, count($events) - 1)];
+
+$_SESSION['puzzle_event'] = $randomEvent;
+
 // Save the correct answer securely in the session
 $_SESSION['puzzle_answer'] = (string)$data['solution'];
 $_SESSION['puzzle_open'] = true;

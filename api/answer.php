@@ -34,9 +34,11 @@ $_SESSION['puzzle_open'] = false;
 $correctAnswer = trim((string)$_SESSION['puzzle_answer']);
 $location = $_SESSION['puzzle_location'];
 $difficulty = $_SESSION['difficulty'] ?? 'Easy';
+$event = $_SESSION['puzzle_event'] ?? null;
 
 if ($userAnswer !== $correctAnswer) {
     unset($_SESSION['puzzle_answer']);
+    unset($_SESSION['puzzle_event']);
 
     echo json_encode([
         'correct' => false,
@@ -68,6 +70,10 @@ if (!isset($rewards[$location]) || !isset($multipliers[$difficulty])) {
 // Calculate rewards
 $coins = $rewards[$location]['coins'] * $multipliers[$difficulty];
 $score = $rewards[$location]['score'];
+// Apply bonus treasure event
+if ($event && $event['type'] === 'bonus_coins') {
+    $coins += $event['amount'];
+}
 
 try {
     $pdo->beginTransaction();
@@ -82,6 +88,43 @@ try {
         $location
     ]);
 
+    // Update player rewards and energy
+if ($event && $event['type'] === 'energy_loss') {
+
+    $stmt = $pdo->prepare("
+        UPDATE players
+        SET coins = coins + ?,
+            score = score + ?,
+            energy = GREATEST(energy - ?, 0)
+        WHERE player_id = ?
+    ");
+
+    $stmt->execute([
+        $coins,
+        $score,
+        $event['amount'],
+        $_SESSION['player_id']
+    ]);
+
+} elseif ($event && $event['type'] === 'energy_boost') {
+
+    $stmt = $pdo->prepare("
+        UPDATE players
+        SET coins = coins + ?,
+            score = score + ?,
+            energy = LEAST(energy + ?, 100)
+        WHERE player_id = ?
+    ");
+
+    $stmt->execute([
+        $coins,
+        $score,
+        $event['amount'],
+        $_SESSION['player_id']
+    ]);
+
+} else {
+
     $stmt = $pdo->prepare("
         UPDATE players
         SET coins = coins + ?,
@@ -94,17 +137,26 @@ try {
         $score,
         $_SESSION['player_id']
     ]);
+}
+
+    $stmt->execute([
+        $coins,
+        $score,
+        $_SESSION['player_id']
+    ]);
 
     $pdo->commit();
 
     unset($_SESSION['puzzle_answer']);
 
     echo json_encode([
-        'correct' => true,
-        'message' => 'Correct answer! Treasure unlocked!',
-        'coins' => $coins,
-        'score' => $score
-    ]);
+    'correct' => true,
+    'message' => 'Correct answer! Treasure unlocked!',
+    'coins' => $coins,
+    'score' => $score,
+    'event' => $event ? $event['description'] : null,
+    'event_name' => $event ? $event['name'] : null
+]);
 
 } catch (PDOException $e) {
 
@@ -113,6 +165,7 @@ try {
     }
 
     unset($_SESSION['puzzle_answer']);
+    unset($_SESSION['puzzle_event']);
 
     http_response_code(409);
 

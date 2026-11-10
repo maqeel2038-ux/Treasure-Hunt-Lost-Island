@@ -227,20 +227,24 @@ $alreadyCompleted = $stmt->fetch() !== false;
     </div>
 
     <p>
-    Game Mode:
-    <strong>
-        <?php echo htmlspecialchars($_SESSION["difficulty"] ?? "Easy"); ?>
-    </strong>
-</p>
+        Game Mode:
+        <strong>
+            <?php echo htmlspecialchars($_SESSION["difficulty"] ?? "Easy"); ?>
+        </strong>
+    </p>
 
-<p>
-    Time Limit:
-    <strong>
-        <?php echo ($_SESSION["difficulty"] ?? "Easy") === "Hard" ? 30 :
-        (($_SESSION["difficulty"] ?? "Easy") === "Medium" ? 45 : 60); ?>
-        seconds
-    </strong>
-</p>
+    <p>
+        Time Limit:
+        <strong>
+            <?php
+            $selectedDifficulty = $_SESSION["difficulty"] ?? "Easy";
+
+            echo $selectedDifficulty === "Hard" ? 30 :
+                ($selectedDifficulty === "Medium" ? 45 : 60);
+            ?>
+            seconds
+        </strong>
+    </p>
 
     <?php if ($alreadyCompleted): ?>
 
@@ -259,13 +263,11 @@ $alreadyCompleted = $stmt->fetch() !== false;
         <p>Solve the picture puzzle before time runs out!</p>
 
         <div id="timer">
-    <?php
-    $selectedDifficulty = $_SESSION["difficulty"] ?? "Easy";
-
-    echo $selectedDifficulty === "Hard" ? 30 :
-        ($selectedDifficulty === "Medium" ? 45 : 60);
-    ?>
-</div>
+            <?php
+            echo $selectedDifficulty === "Hard" ? 30 :
+                ($selectedDifficulty === "Medium" ? 45 : 60);
+            ?>
+        </div>
 
         <div class="question" id="question">
             Loading Banana puzzle...
@@ -304,6 +306,7 @@ $alreadyCompleted = $stmt->fetch() !== false;
 <?php if (!$alreadyCompleted): ?>
 
 <script>
+
     const locationName = <?php echo json_encode($location); ?>;
 
     const question = document.getElementById("question");
@@ -314,15 +317,16 @@ $alreadyCompleted = $stmt->fetch() !== false;
     const timer = document.getElementById("timer");
     const links = document.getElementById("links");
 
-    const difficulty = "<?php echo $_SESSION['difficulty'] ?? 'Easy'; ?>";
+    const difficulty = <?php echo json_encode($_SESSION["difficulty"] ?? "Easy"); ?>;
 
-let timeLeft = 60;
+    let timeLeft = 60;
 
-if (difficulty === "Medium") {
-    timeLeft = 45;
-} else if (difficulty === "Hard") {
-    timeLeft = 30;
-}
+    if (difficulty === "Medium") {
+        timeLeft = 45;
+    } else if (difficulty === "Hard") {
+        timeLeft = 30;
+    }
+
     let countdown;
     let gameFinished = false;
 
@@ -348,20 +352,29 @@ if (difficulty === "Medium") {
                 throw new Error(data.error || "Could not load puzzle.");
             }
 
+            if (!data.image) {
+                throw new Error("Puzzle image was not received.");
+            }
+
             const image = document.createElement("img");
 
             image.src = data.image;
             image.alt = "Banana picture puzzle";
 
+            image.onload = function() {
+                answerInput.disabled = false;
+                submitBtn.disabled = false;
+                answerInput.focus();
+                startTimer();
+            };
+
+            image.onerror = function() {
+                question.textContent = "Puzzle image could not be displayed.";
+                showMessage("Please refresh the page and try again.", "error");
+            };
+
             question.innerHTML = "";
             question.appendChild(image);
-
-            answerInput.disabled = false;
-            submitBtn.disabled = false;
-
-            answerInput.focus();
-
-            startTimer();
 
         } catch (error) {
 
@@ -450,12 +463,16 @@ if (difficulty === "Medium") {
 
             if (data.correct) {
 
-                showMessage(
+                let resultMessage =
                     data.message +
                     " You earned " + data.coins +
-                    " coins and " + data.score + " points!",
-                    "success"
-                );
+                    " coins and " + data.score + " points!";
+
+                if (data.event) {
+                    resultMessage += " 🎲 Random Event: " + data.event;
+                }
+
+                showMessage(resultMessage, "success");
 
             } else {
 
