@@ -32,20 +32,14 @@ $location = $_GET["location"] ?? "Beach";
 $challenges = [
     "Beach" => [
         "name" => "The Explorer's Beach",
-        "coins" => 10,
-        "score" => 100,
         "difficulty" => "Beginner"
     ],
     "HiddenJungle" => [
         "name" => "Hidden Jungle",
-        "coins" => 20,
-        "score" => 150,
         "difficulty" => "Intermediate"
     ],
     "LostTemple" => [
         "name" => "Lost Temple",
-        "coins" => 30,
-        "score" => 200,
         "difficulty" => "Advanced"
     ]
 ];
@@ -94,6 +88,9 @@ if (!isset($timeLimit[$selectedDifficulty])) {
 }
 
 $gameTime = $timeLimit[$selectedDifficulty];
+
+// Current session streak
+$currentStreak = (int)($_SESSION["game_streak"] ?? 0);
 ?>
 
 <!DOCTYPE html>
@@ -103,7 +100,10 @@ $gameTime = $timeLimit[$selectedDifficulty];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title><?php echo htmlspecialchars($challenge["name"]); ?> | Treasure Hunt</title>
+    <title>
+        <?php echo htmlspecialchars($challenge["name"]); ?>
+        | Treasure Hunt
+    </title>
 
     <link rel="stylesheet" href="../assets/css/style.css">
 
@@ -195,6 +195,31 @@ $gameTime = $timeLimit[$selectedDifficulty];
             border-radius: 15px;
             padding: 25px;
             margin-top: 25px;
+        }
+
+        /* Streak panel */
+        .streak-panel {
+            display: flex;
+            justify-content: space-around;
+            gap: 15px;
+            flex-wrap: wrap;
+            background: linear-gradient(135deg, #46315f, #263a5d);
+            border: 1px solid #ffc629;
+            border-radius: 12px;
+            padding: 18px;
+            margin: 20px 0;
+        }
+
+        .streak-panel div {
+            color: #ffffff;
+            font-size: 14px;
+        }
+
+        .streak-panel strong {
+            display: block;
+            color: #ffc629;
+            font-size: 24px;
+            margin-top: 8px;
         }
 
         .timer-heading {
@@ -381,12 +406,15 @@ $gameTime = $timeLimit[$selectedDifficulty];
 
 <div class="challenge-container">
 
-    <div class="game-brand">🏝️ TREASURE HUNT: THE LOST ISLAND</div>
+    <div class="game-brand">
+        🏝️ TREASURE HUNT: THE LOST ISLAND
+    </div>
 
     <h1><?php echo htmlspecialchars($challenge["name"]); ?></h1>
 
     <p class="subtitle">
-        Welcome back, <?php echo htmlspecialchars($player["username"]); ?>!
+        Welcome back,
+        <?php echo htmlspecialchars($player["username"]); ?>!
         Your next adventure awaits.
     </p>
 
@@ -446,7 +474,28 @@ $gameTime = $timeLimit[$selectedDifficulty];
 
             <h2>🧩 Solve the Banana Puzzle</h2>
 
-            <p>Look carefully at the picture and enter the correct answer.</p>
+            <p>
+                Look carefully at the picture and enter the correct answer.
+            </p>
+
+            <!-- Streak system -->
+            <div class="streak-panel">
+
+                <div>
+                    🔥 Winning Streak
+                    <strong id="streakCount">
+                        <?php echo $currentStreak; ?>
+                    </strong>
+                </div>
+
+                <div>
+                    🎁 Streak Bonus
+                    <strong id="streakBonus">
+                        <?php echo min($currentStreak * 5, 25); ?> coins
+                    </strong>
+                </div>
+
+            </div>
 
             <div class="timer-heading">
                 <span>TIME REMAINING</span>
@@ -462,7 +511,9 @@ $gameTime = $timeLimit[$selectedDifficulty];
             </div>
 
             <div class="question" id="question">
-                <p class="loading-text">Loading your Banana puzzle...</p>
+                <p class="loading-text">
+                    Loading your Banana puzzle...
+                </p>
             </div>
 
             <form id="challengeForm">
@@ -518,7 +569,6 @@ $gameTime = $timeLimit[$selectedDifficulty];
 <?php if (!$alreadyCompleted): ?>
 
 <script>
-
     const locationName = <?php echo json_encode($location); ?>;
     const difficulty = <?php echo json_encode($selectedDifficulty); ?>;
     const gameTime = <?php echo (int)$gameTime; ?>;
@@ -533,6 +583,9 @@ $gameTime = $timeLimit[$selectedDifficulty];
     const timerStatus = document.getElementById("timerStatus");
     const retryBtn = document.getElementById("retryBtn");
     const links = document.getElementById("links");
+
+    const streakCount = document.getElementById("streakCount");
+    const streakBonus = document.getElementById("streakBonus");
 
     let timeLeft = gameTime;
     let countdown = null;
@@ -551,7 +604,7 @@ $gameTime = $timeLimit[$selectedDifficulty];
         message.className = "message";
     }
 
-    // Reset the timer
+    // Reset timer
     function resetTimer() {
         clearInterval(countdown);
 
@@ -611,7 +664,7 @@ $gameTime = $timeLimit[$selectedDifficulty];
         }, 1000);
     }
 
-    // Load puzzle from Banana API
+    // Load puzzle
     async function loadPuzzle() {
 
         if (loading) return;
@@ -662,6 +715,7 @@ $gameTime = $timeLimit[$selectedDifficulty];
             const image = new Image();
 
             image.alt = "Banana picture puzzle";
+
             image.onload = function() {
 
                 if (gameFinished) return;
@@ -674,6 +728,7 @@ $gameTime = $timeLimit[$selectedDifficulty];
                 answerInput.focus();
 
                 startTimer();
+
                 loading = false;
             };
 
@@ -688,6 +743,7 @@ $gameTime = $timeLimit[$selectedDifficulty];
                 );
 
                 retryBtn.style.display = "inline-block";
+
                 loading = false;
             };
 
@@ -766,10 +822,22 @@ $gameTime = $timeLimit[$selectedDifficulty];
 
             if (data.correct) {
 
+                // Update streak information
+                streakCount.textContent = data.streak;
+                streakBonus.textContent =
+                    data.streak_bonus + " coins";
+
                 let resultMessage =
                     "🏆 " + data.message +
                     " You earned " + data.coins +
-                    " coins and " + data.score + " points!";
+                    " coins and " + data.score +
+                    " points!";
+
+                if (data.streak_bonus > 0) {
+                    resultMessage +=
+                        " 🔥 Streak bonus: " +
+                        data.streak_bonus + " coins!";
+                }
 
                 if (data.event) {
                     resultMessage +=
@@ -780,13 +848,16 @@ $gameTime = $timeLimit[$selectedDifficulty];
 
                 timerStatus.textContent = "Completed";
 
-                // Show updated reward information
                 retryBtn.style.display = "none";
-
-                // Display navigation links
                 links.style.display = "block";
 
             } else {
+
+                // Update reset streak
+                if (data.streak !== undefined) {
+                    streakCount.textContent = data.streak;
+                    streakBonus.textContent = "0 coins";
+                }
 
                 showMessage(
                     data.message || "Incorrect answer. Try again!",
@@ -797,18 +868,19 @@ $gameTime = $timeLimit[$selectedDifficulty];
 
                 retryBtn.style.display = "inline-block";
                 retryBtn.textContent = "🔄 Try Another Puzzle";
-
             }
 
         } catch (error) {
 
             showMessage(
-                error.message + " You can try loading a new puzzle.",
+                error.message,
                 "error"
             );
 
             timerStatus.textContent = "Submission failed";
 
+            // Do not submit the same puzzle again if the server
+            // may already have processed the request.
             retryBtn.style.display = "inline-block";
 
         } finally {
@@ -817,7 +889,7 @@ $gameTime = $timeLimit[$selectedDifficulty];
 
     });
 
-    // Load the first puzzle
+    // Load first puzzle
     loadPuzzle();
 
 </script>
