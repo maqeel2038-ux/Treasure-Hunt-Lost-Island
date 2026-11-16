@@ -1,28 +1,43 @@
+
 <?php
 require_once "config/database.php";
 
 $message = "";
 
+$username = "";
+$email = "";
+
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    $username = trim($_POST["username"]);
-    $email = trim($_POST["email"]);
-    $password = $_POST["password"];
+
+    $username = trim($_POST["username"] ?? "");
+    $email = trim($_POST["email"] ?? "");
+    $password = $_POST["password"] ?? "";
 
     if ($username === "" || $email === "" || $password === "") {
         $message = "Please fill in all fields.";
+
+    } elseif (strlen($username) < 3 || strlen($username) > 20) {
+        $message = "Username must be between 3 and 20 characters.";
+
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $message = "Please enter a valid email.";
+
     } elseif (strlen($password) < 8) {
         $message = "Password must be at least 8 characters.";
+
     } else {
+
         $check = $pdo->prepare(
             "SELECT player_id FROM players WHERE username = ? OR email = ?"
         );
+
         $check->execute([$username, $email]);
 
         if ($check->fetch()) {
             $message = "Username or email already exists.";
+
         } else {
+
             $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
             $stmt = $pdo->prepare(
@@ -39,6 +54,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 }
 ?>
 
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -49,34 +66,63 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 </head>
 <body>
 
-    <h1>Create Your Player Account</h1>
-    <p>Join the adventure and discover the Lost Island!</p>
+    <main class="auth-container">
+        <div class="auth-card">
 
-    <p><?php echo htmlspecialchars($message); ?></p>
+            <h1>Create Your Account</h1>
+            <p>Join the adventure and discover the Lost Island!</p>
 
-    <form method="POST">
-        <input type="text" name="username"
-               placeholder="Username" required>
+            <?php if ($message !== ""): ?>
+                <p class="error-message">
+                    <?php echo htmlspecialchars($message); ?>
+                </p>
+            <?php endif; ?>
 
-        <br><br>
+            <form method="POST" action="register.php">
 
-        <input type="email" name="email"
-               placeholder="Email address" required>
+                <label for="username">Username</label>
+                <input
+                    type="text"
+                    id="username"
+                    name="username"
+                    placeholder="Choose a username"
+                    value="<?php echo htmlspecialchars($username); ?>"
+                    minlength="3"
+                    maxlength="20"
+                    required
+                >
 
-        <br><br>
+                <label for="email">Email Address</label>
+                <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    placeholder="Enter your email"
+                    value="<?php echo htmlspecialchars($email); ?>"
+                    required
+                >
 
-        <input type="password" name="password"
-               placeholder="Password (minimum 8 characters)"
-               minlength="8" required>
+                <label for="password">Password</label>
+                <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    placeholder="At least 8 characters"
+                    minlength="8"
+                    required
+                >
 
-        <br><br>
+                <button type="submit">Create Account</button>
 
-        <button type="submit">Create Account</button>
-    </form>
+            </form>
 
-    <p>Already have an account?
-        <a href="login.php">Login</a>
-    </p>
+            <p class="auth-link">
+                Already have an account?
+                <a href="login.php">Login here</a>
+            </p>
+
+        </div>
+    </main>
 
 </body>
 </html>
