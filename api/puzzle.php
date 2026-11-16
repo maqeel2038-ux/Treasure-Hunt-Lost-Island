@@ -4,59 +4,82 @@ session_start();
 
 header('Content-Type: application/json; charset=utf-8');
 
+// Helper function for API errors
+function sendError($message, $statusCode) {
+    http_response_code($statusCode);
+    echo json_encode(['error' => $message]);
+    exit;
+}
+
 // Check whether the player is logged in
 if (empty($_SESSION['player_id'])) {
-    http_response_code(401);
-    echo json_encode(['error' => 'Please log in first.']);
-    exit;
+    sendError('Please log in first.', 401);
 }
 
-// Get the current island location
+// Get and validate island location
 $location = $_GET['location'] ?? 'Beach';
 
-$allowedLocations = ['Beach', 'HiddenJungle', 'LostTemple'];
+$allowedLocations = [
+    'Beach',
+    'HiddenJungle',
+    'LostTemple'
+];
 
 if (!in_array($location, $allowedLocations, true)) {
-    http_response_code(400);
-    echo json_encode(['error' => 'Invalid location.']);
-    exit;
+    sendError('Invalid location.', 400);
 }
-
-$_SESSION['puzzle_location'] = $location;
 
 // Banana API URL
 $apiUrl = "http://marcconrad.com/uob/banana/api.php?out=json";
 
-// Connect to the API
+// Set connection options
 $context = stream_context_create([
     "http" => [
-        "timeout" => 15
+        "timeout" => 15,
+        "ignore_errors" => true,
+        "user_agent" => "TreasureHuntGame/1.0"
     ]
 ]);
 
+// Connect to Banana API
 $response = @file_get_contents($apiUrl, false, $context);
 
 if ($response === false) {
-    http_response_code(502);
-    echo json_encode(['error' => 'Could not connect to Banana API.']);
-    exit;
+    sendError('Could not connect to Banana API. Please try again.', 502);
 }
 
-// Convert API response into PHP data
+// Check HTTP response status
+$statusLine = $http_response_header[0] ?? '';
+
+if (!preg_match('/\s200\s/', $statusLine)) {
+    sendError('Banana API is currently unavailable.', 502);
+}
+
+// Decode API response
 $data = json_decode($response, true);
 
-// Check API response
+// Validate API response
 if (
     !is_array($data) ||
     !isset($data['question']) ||
-    !isset($data['solution'])
+    !isset($data['solution']) ||
+    !is_string($data['question']) ||
+    !is_scalar($data['solution'])
 ) {
-    http_response_code(502);
-    echo json_encode(['error' => 'Invalid puzzle response.']);
-    exit;
+    sendError('Invalid puzzle response from Banana API.', 502);
 }
 
-// Generate a random game event
+// Validate puzzle image URL
+$imageUrl = filter_var($data['question'], FILTER_VALIDATE_URL);
+
+if (
+    !$imageUrl ||
+    !in_array(parse_url($imageUrl, PHP_URL_SCHEME), ['http', 'https'], true)
+) {
+    sendError('Invalid puzzle image URL.', 502);
+}
+
+// Generate random game event
 $events = [
     [
         'name' => 'Tropical Storm',
@@ -80,14 +103,14 @@ $events = [
 
 $randomEvent = $events[random_int(0, count($events) - 1)];
 
+// Save puzzle information securely in PHP session
+$_SESSION['puzzle_location'] = $location;
 $_SESSION['puzzle_event'] = $randomEvent;
-
-// Save the correct answer securely in the session
 $_SESSION['puzzle_answer'] = (string)$data['solution'];
 $_SESSION['puzzle_open'] = true;
 
-// Send only the puzzle image to the browser
+// Send only the image to the browser
 echo json_encode([
-    'image' => $data['question']
+    'image' => $imageUrl
 ]);
 ?>
