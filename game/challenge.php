@@ -325,6 +325,27 @@ $currentStreak = (int)($_SESSION["game_streak"] ?? 0);
             color: white;
         }
 
+        /* Hint system */
+        .hint-section {
+            margin: 20px 0;
+        }
+
+        .hint-button {
+            background: #3b82b5;
+            color: white;
+        }
+
+        .hint-button:hover {
+            background: #559bd0;
+        }
+
+        #hintMessage {
+            color: #ffc629;
+            font-size: 14px;
+            margin-top: 12px;
+            line-height: 1.6;
+        }
+
         .message {
             padding: 16px;
             border-radius: 10px;
@@ -516,6 +537,22 @@ $currentStreak = (int)($_SESSION["game_streak"] ?? 0);
                 </p>
             </div>
 
+            <!-- Hint system -->
+            <div class="hint-section">
+
+                <button
+                    type="button"
+                    id="hintBtn"
+                    class="game-button hint-button"
+                    disabled
+                >
+                    💡 Get a Hint
+                </button>
+
+                <p id="hintMessage"></p>
+
+            </div>
+
             <form id="challengeForm">
 
                 <input
@@ -538,18 +575,7 @@ $currentStreak = (int)($_SESSION["game_streak"] ?? 0);
                 </button>
 
             </form>
-<div class="hint-section">
-    <button
-        type="button"
-        id="hintBtn"
-        class="game-button"
-        disabled
-    >
-        💡 Get a Hint
-    </button>
 
-    <p id="hintMessage"></p>
-</div>
             <button
                 type="button"
                 id="retryBtn"
@@ -598,11 +624,16 @@ $currentStreak = (int)($_SESSION["game_streak"] ?? 0);
     const streakCount = document.getElementById("streakCount");
     const streakBonus = document.getElementById("streakBonus");
 
+    // Hint elements
+    const hintBtn = document.getElementById("hintBtn");
+    const hintMessage = document.getElementById("hintMessage");
+
     let timeLeft = gameTime;
     let countdown = null;
     let gameFinished = false;
     let loading = false;
     let submitting = false;
+    let hintUsed = false;
 
     // Display messages
     function showMessage(text, type) {
@@ -661,6 +692,7 @@ $currentStreak = (int)($_SESSION["game_streak"] ?? 0);
 
                 answerInput.disabled = true;
                 submitBtn.disabled = true;
+                hintBtn.disabled = true;
 
                 timerStatus.textContent = "Time is up!";
 
@@ -694,6 +726,12 @@ $currentStreak = (int)($_SESSION["game_streak"] ?? 0);
         answerInput.value = "";
         answerInput.disabled = true;
         submitBtn.disabled = true;
+
+        // Reset hint for the new puzzle
+        hintUsed = false;
+        hintBtn.disabled = true;
+        hintBtn.textContent = "💡 Get a Hint";
+        hintMessage.textContent = "";
 
         question.innerHTML =
             '<p class="loading-text">⏳ Connecting to Banana API...</p>';
@@ -736,6 +774,11 @@ $currentStreak = (int)($_SESSION["game_streak"] ?? 0);
                 answerInput.disabled = false;
                 submitBtn.disabled = false;
 
+                // Enable hint after puzzle loads
+                hintBtn.disabled = false;
+                hintUsed = false;
+                hintMessage.textContent = "";
+
                 answerInput.focus();
 
                 startTimer();
@@ -776,6 +819,22 @@ $currentStreak = (int)($_SESSION["game_streak"] ?? 0);
         }
     }
 
+    // Hint system
+    hintBtn.addEventListener("click", function() {
+
+        if (hintUsed || gameFinished || loading) {
+            return;
+        }
+
+        hintMessage.textContent =
+            "💡 Hint: Look carefully at the picture. Count the objects and check for repeated patterns.";
+
+        hintUsed = true;
+
+        hintBtn.disabled = true;
+        hintBtn.textContent = "Hint Used";
+    });
+
     // Retry puzzle
     retryBtn.addEventListener("click", function() {
         loadPuzzle();
@@ -804,6 +863,7 @@ $currentStreak = (int)($_SESSION["game_streak"] ?? 0);
 
         submitBtn.disabled = true;
         answerInput.disabled = true;
+        hintBtn.disabled = true;
 
         timerStatus.textContent = "Checking answer...";
 
@@ -890,8 +950,6 @@ $currentStreak = (int)($_SESSION["game_streak"] ?? 0);
 
             timerStatus.textContent = "Submission failed";
 
-            // Do not submit the same puzzle again if the server
-            // may already have processed the request.
             retryBtn.style.display = "inline-block";
 
         } finally {
