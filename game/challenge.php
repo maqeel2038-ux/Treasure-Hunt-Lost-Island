@@ -3,6 +3,7 @@
 session_start();
 require_once "../config/database.php";
 
+// Check login
 if (!isset($_SESSION["player_id"])) {
     header("Location: ../login.php");
     exit();
@@ -35,14 +36,12 @@ $challenges = [
         "score" => 100,
         "difficulty" => "Beginner"
     ],
-
     "HiddenJungle" => [
         "name" => "Hidden Jungle",
         "coins" => 20,
         "score" => 150,
         "difficulty" => "Intermediate"
     ],
-
     "LostTemple" => [
         "name" => "Lost Temple",
         "coins" => 30,
@@ -80,6 +79,21 @@ $stmt = $pdo->prepare(
 $stmt->execute([$player_id, $location]);
 
 $alreadyCompleted = $stmt->fetch() !== false;
+
+// Difficulty and time limit
+$selectedDifficulty = $_SESSION["difficulty"] ?? "Easy";
+
+$timeLimit = [
+    "Easy" => 60,
+    "Medium" => 45,
+    "Hard" => 30
+];
+
+if (!isset($timeLimit[$selectedDifficulty])) {
+    $selectedDifficulty = "Easy";
+}
+
+$gameTime = $timeLimit[$selectedDifficulty];
 ?>
 
 <!DOCTYPE html>
@@ -94,96 +108,216 @@ $alreadyCompleted = $stmt->fetch() !== false;
     <link rel="stylesheet" href="../assets/css/style.css">
 
     <style>
+        * {
+            box-sizing: border-box;
+        }
+
         body {
-            background: #101d38;
+            background:
+                radial-gradient(circle at top right, #263f67, transparent 35%),
+                #101d38;
             color: white;
             font-family: Arial, sans-serif;
             padding: 20px;
+            min-height: 100vh;
         }
 
         .challenge-container {
-            max-width: 650px;
-            margin: 50px auto;
+            max-width: 850px;
+            margin: 30px auto;
             background: #1e2d49;
             padding: 35px;
-            border-radius: 15px;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
             text-align: center;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.25);
+        }
+
+        .game-brand {
+            color: #ffc629;
+            letter-spacing: 2px;
+            font-size: 13px;
+            font-weight: bold;
         }
 
         h1 {
             color: #ffc629;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #aab6cc;
+            margin-bottom: 25px;
         }
 
         .stats {
-            display: flex;
-            justify-content: space-around;
-            flex-wrap: wrap;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
             gap: 15px;
             margin: 25px 0;
         }
 
         .stat {
             background: #263a5d;
-            padding: 12px 18px;
-            border-radius: 10px;
+            padding: 18px 10px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .stat strong {
+            display: block;
+            color: #ffc629;
+            font-size: 22px;
+            margin-top: 8px;
+        }
+
+        .game-info {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 25px 0;
+        }
+
+        .info-badge {
+            background: #263a5d;
+            padding: 10px 18px;
+            border-radius: 20px;
+            font-size: 13px;
+        }
+
+        .info-badge strong {
+            color: #ffc629;
+        }
+
+        .game-card {
+            background: #152440;
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 25px;
+        }
+
+        .timer-heading {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 13px;
+            color: #aab6cc;
+        }
+
+        #timer {
+            color: #ffc629;
+            font-size: 40px;
+            font-weight: bold;
+            margin: 15px 0;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .timer-track {
+            width: 100%;
+            height: 9px;
+            background: #344563;
+            border-radius: 20px;
+            overflow: hidden;
+        }
+
+        .timer-progress {
+            width: 100%;
+            height: 100%;
+            background: #ffc629;
+            transition: width 1s linear;
+            border-radius: 20px;
         }
 
         .question {
-            margin: 30px 0;
+            min-height: 230px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 25px 0;
+            background: #203454;
+            border-radius: 12px;
+            padding: 15px;
         }
 
         .question img {
             max-width: 100%;
-            width: 400px;
+            width: 420px;
+            max-height: 350px;
+            object-fit: contain;
             border-radius: 10px;
             background: white;
         }
 
-        #timer {
-            font-size: 35px;
-            font-weight: bold;
+        .loading-text {
             color: #ffc629;
-            margin: 20px;
-        }
-
-        input[type="text"] {
-            width: 85%;
-            padding: 14px;
-            border: none;
-            border-radius: 8px;
             font-size: 16px;
-            margin-bottom: 15px;
-            box-sizing: border-box;
         }
 
-        button {
+        .answer-input {
+            width: 100%;
+            padding: 16px;
+            border: 2px solid #344563;
+            border-radius: 10px;
+            font-size: 17px;
+            margin: 15px 0;
+            text-align: center;
+            outline: none;
+        }
+
+        .answer-input:focus {
+            border-color: #ffc629;
+        }
+
+        .game-button {
+            display: inline-block;
             background: #ffc629;
             color: #101d38;
-            padding: 13px 30px;
+            padding: 14px 25px;
             border: none;
-            border-radius: 8px;
-            font-size: 16px;
+            border-radius: 9px;
+            font-size: 15px;
             font-weight: bold;
             cursor: pointer;
+            margin: 6px;
+            transition: 0.2s;
         }
 
-        button:disabled {
-            opacity: 0.5;
+        .game-button:hover {
+            transform: translateY(-2px);
+            background: #ffdb70;
+        }
+
+        .game-button:disabled {
+            opacity: 0.45;
             cursor: not-allowed;
+            transform: none;
+        }
+
+        .retry-button {
+            background: #3b82b5;
+            color: white;
         }
 
         .message {
-            padding: 15px;
-            border-radius: 8px;
+            padding: 16px;
+            border-radius: 10px;
             margin: 20px 0;
+            line-height: 1.6;
+            display: none;
         }
 
         .success {
+            display: block;
             background: #155d3b;
+            border: 1px solid #299c62;
         }
 
         .error {
+            display: block;
             background: #7b2525;
+            border: 1px solid #b94b4b;
         }
 
         .links {
@@ -191,9 +325,54 @@ $alreadyCompleted = $stmt->fetch() !== false;
         }
 
         .links a {
+            display: inline-block;
             color: #ffc629;
             margin: 10px;
             text-decoration: none;
+            font-weight: bold;
+        }
+
+        .links a:hover {
+            text-decoration: underline;
+        }
+
+        .game-instructions {
+            color: #aab6cc;
+            font-size: 13px;
+            margin-top: 20px;
+            line-height: 1.6;
+        }
+
+        @media (max-width: 600px) {
+            .challenge-container {
+                padding: 20px 15px;
+                margin: 10px auto;
+            }
+
+            .stats {
+                gap: 8px;
+            }
+
+            .stat {
+                padding: 13px 5px;
+                font-size: 12px;
+            }
+
+            .stat strong {
+                font-size: 18px;
+            }
+
+            .game-card {
+                padding: 15px;
+            }
+
+            .question {
+                min-height: 180px;
+            }
+
+            #timer {
+                font-size: 32px;
+            }
         }
     </style>
 </head>
@@ -202,100 +381,133 @@ $alreadyCompleted = $stmt->fetch() !== false;
 
 <div class="challenge-container">
 
-    <h1>🏝️ Treasure Hunt</h1>
+    <div class="game-brand">🏝️ TREASURE HUNT: THE LOST ISLAND</div>
 
-    <h2><?php echo htmlspecialchars($challenge["name"]); ?></h2>
+    <h1><?php echo htmlspecialchars($challenge["name"]); ?></h1>
 
-    <p>
-        Welcome, <?php echo htmlspecialchars($player["username"]); ?>!
+    <p class="subtitle">
+        Welcome back, <?php echo htmlspecialchars($player["username"]); ?>!
+        Your next adventure awaits.
     </p>
 
     <div class="stats">
 
         <div class="stat">
-            🪙 Coins: <?php echo (int)$player["coins"]; ?>
+            🪙 Coins
+            <strong><?php echo (int)$player["coins"]; ?></strong>
         </div>
 
         <div class="stat">
-            ⭐ Score: <?php echo (int)$player["score"]; ?>
+            ⭐ Score
+            <strong><?php echo (int)$player["score"]; ?></strong>
         </div>
 
         <div class="stat">
-            ⚡ Energy: <?php echo (int)$player["energy"]; ?>
+            ⚡ Energy
+            <strong><?php echo (int)$player["energy"]; ?></strong>
         </div>
 
     </div>
 
-    <p>
-        Game Mode:
-        <strong>
-            <?php echo htmlspecialchars($_SESSION["difficulty"] ?? "Easy"); ?>
-        </strong>
-    </p>
+    <div class="game-info">
 
-    <p>
-        Time Limit:
-        <strong>
-            <?php
-            $selectedDifficulty = $_SESSION["difficulty"] ?? "Easy";
+        <div class="info-badge">
+            Difficulty:
+            <strong><?php echo htmlspecialchars($selectedDifficulty); ?></strong>
+        </div>
 
-            echo $selectedDifficulty === "Hard" ? 30 :
-                ($selectedDifficulty === "Medium" ? 45 : 60);
-            ?>
-            seconds
-        </strong>
-    </p>
+        <div class="info-badge">
+            Challenge:
+            <strong><?php echo htmlspecialchars($challenge["difficulty"]); ?></strong>
+        </div>
+
+        <div class="info-badge">
+            Time:
+            <strong><?php echo $gameTime; ?> seconds</strong>
+        </div>
+
+    </div>
 
     <?php if ($alreadyCompleted): ?>
 
         <div class="message success">
-            You have already completed this challenge!
+            🏆 You have already completed this challenge!
             No additional rewards are available.
         </div>
 
         <div class="links">
-            <a href="island.php">Back to Island</a>
+            <a href="island.php">← Back to Island</a>
             <a href="../dashboard.php">Dashboard</a>
         </div>
 
     <?php else: ?>
 
-        <p>Solve the picture puzzle before time runs out!</p>
+        <div class="game-card">
 
-        <div id="timer">
-            <?php
-            echo $selectedDifficulty === "Hard" ? 30 :
-                ($selectedDifficulty === "Medium" ? 45 : 60);
-            ?>
-        </div>
+            <h2>🧩 Solve the Banana Puzzle</h2>
 
-        <div class="question" id="question">
-            Loading Banana puzzle...
-        </div>
+            <p>Look carefully at the picture and enter the correct answer.</p>
 
-        <form id="challengeForm">
+            <div class="timer-heading">
+                <span>TIME REMAINING</span>
+                <span id="timerStatus">Ready</span>
+            </div>
 
-            <input
-                type="text"
-                id="answer"
-                placeholder="Enter your answer..."
-                autocomplete="off"
-                required
-                disabled
+            <div id="timer">
+                <?php echo $gameTime; ?>s
+            </div>
+
+            <div class="timer-track">
+                <div class="timer-progress" id="timerProgress"></div>
+            </div>
+
+            <div class="question" id="question">
+                <p class="loading-text">Loading your Banana puzzle...</p>
+            </div>
+
+            <form id="challengeForm">
+
+                <input
+                    type="text"
+                    id="answer"
+                    class="answer-input"
+                    placeholder="Enter your answer..."
+                    autocomplete="off"
+                    required
+                    disabled
+                >
+
+                <button
+                    type="submit"
+                    id="submitBtn"
+                    class="game-button"
+                    disabled
+                >
+                    Submit Answer →
+                </button>
+
+            </form>
+
+            <button
+                type="button"
+                id="retryBtn"
+                class="game-button retry-button"
+                style="display:none;"
             >
-
-            <br>
-
-            <button type="submit" id="submitBtn" disabled>
-                Submit Answer
+                🔄 Try Another Puzzle
             </button>
 
-        </form>
+            <div id="message" class="message"></div>
 
-        <div id="message"></div>
+            <p class="game-instructions">
+                💡 Tip: Check the picture carefully before submitting.
+                Your time starts when the puzzle image has loaded.
+            </p>
+
+        </div>
 
         <div class="links" id="links" style="display:none;">
-            <a href="island.php">Back to Island</a>
+            <a href="island.php">← Back to Island</a>
             <a href="../dashboard.php">Dashboard</a>
         </div>
 
@@ -308,6 +520,8 @@ $alreadyCompleted = $stmt->fetch() !== false;
 <script>
 
     const locationName = <?php echo json_encode($location); ?>;
+    const difficulty = <?php echo json_encode($selectedDifficulty); ?>;
+    const gameTime = <?php echo (int)$gameTime; ?>;
 
     const question = document.getElementById("question");
     const answerInput = document.getElementById("answer");
@@ -315,89 +529,64 @@ $alreadyCompleted = $stmt->fetch() !== false;
     const challengeForm = document.getElementById("challengeForm");
     const message = document.getElementById("message");
     const timer = document.getElementById("timer");
+    const timerProgress = document.getElementById("timerProgress");
+    const timerStatus = document.getElementById("timerStatus");
+    const retryBtn = document.getElementById("retryBtn");
     const links = document.getElementById("links");
 
-    const difficulty = <?php echo json_encode($_SESSION["difficulty"] ?? "Easy"); ?>;
-
-    let timeLeft = 60;
-
-    if (difficulty === "Medium") {
-        timeLeft = 45;
-    } else if (difficulty === "Hard") {
-        timeLeft = 30;
-    }
-
-    let countdown;
+    let timeLeft = gameTime;
+    let countdown = null;
     let gameFinished = false;
+    let loading = false;
+    let submitting = false;
 
     // Display messages
     function showMessage(text, type) {
-        message.className = "message " + type;
         message.textContent = text;
+        message.className = "message " + type;
     }
 
-    // Load puzzle from Banana API through PHP
-    async function loadPuzzle() {
+    function hideMessage() {
+        message.textContent = "";
+        message.className = "message";
+    }
 
-        try {
+    // Reset the timer
+    function resetTimer() {
+        clearInterval(countdown);
 
-            const response = await fetch(
-                "../api/puzzle.php?location=" +
-                encodeURIComponent(locationName)
-            );
+        timeLeft = gameTime;
 
-            const data = await response.json();
+        timer.textContent = timeLeft + "s";
+        timer.style.color = "#ffc629";
 
-            if (!response.ok) {
-                throw new Error(data.error || "Could not load puzzle.");
-            }
+        timerProgress.style.width = "100%";
+        timerProgress.style.background = "#ffc629";
 
-            if (!data.image) {
-                throw new Error("Puzzle image was not received.");
-            }
-
-            const image = document.createElement("img");
-
-            image.src = data.image;
-            image.alt = "Banana picture puzzle";
-
-            image.onload = function() {
-                answerInput.disabled = false;
-                submitBtn.disabled = false;
-                answerInput.focus();
-                startTimer();
-            };
-
-            image.onerror = function() {
-                question.textContent = "Puzzle image could not be displayed.";
-                showMessage("Please refresh the page and try again.", "error");
-            };
-
-            question.innerHTML = "";
-            question.appendChild(image);
-
-        } catch (error) {
-
-            question.textContent = error.message;
-
-            showMessage(
-                "Unable to load the puzzle. Please refresh the page.",
-                "error"
-            );
-        }
+        timerStatus.textContent = "Ready";
     }
 
     // Start countdown
     function startTimer() {
 
+        resetTimer();
+
+        timerStatus.textContent = "Running";
+
         countdown = setInterval(function() {
 
             timeLeft--;
 
-            timer.textContent = timeLeft;
+            timer.textContent = timeLeft + "s";
+
+            const percentage = (timeLeft / gameTime) * 100;
+
+            timerProgress.style.width = percentage + "%";
 
             if (timeLeft <= 10) {
-                timer.style.color = "red";
+                timer.style.color = "#ff5555";
+                timerProgress.style.background = "#ff5555";
+                timerStatus.textContent = "Hurry up!";
             }
 
             if (timeLeft <= 0) {
@@ -409,23 +598,128 @@ $alreadyCompleted = $stmt->fetch() !== false;
                 answerInput.disabled = true;
                 submitBtn.disabled = true;
 
+                timerStatus.textContent = "Time is up!";
+
                 showMessage(
-                    "Time is up! Challenge failed. Please return to the island.",
+                    "⏰ Time is up! You can try another puzzle.",
                     "error"
                 );
 
-                links.style.display = "block";
+                retryBtn.style.display = "inline-block";
             }
 
         }, 1000);
     }
 
-    // Submit answer to PHP
+    // Load puzzle from Banana API
+    async function loadPuzzle() {
+
+        if (loading) return;
+
+        loading = true;
+        gameFinished = false;
+        submitting = false;
+
+        clearInterval(countdown);
+        resetTimer();
+        hideMessage();
+
+        links.style.display = "none";
+        retryBtn.style.display = "none";
+
+        answerInput.value = "";
+        answerInput.disabled = true;
+        submitBtn.disabled = true;
+
+        question.innerHTML =
+            '<p class="loading-text">⏳ Connecting to Banana API...</p>';
+
+        try {
+
+            const response = await fetch(
+                "../api/puzzle.php?location=" +
+                encodeURIComponent(locationName),
+                {
+                    cache: "no-store"
+                }
+            );
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(
+                    data.error || "Could not load puzzle."
+                );
+            }
+
+            if (!data.image) {
+                throw new Error("Puzzle image was not received.");
+            }
+
+            question.innerHTML =
+                '<p class="loading-text">🧩 Loading puzzle image...</p>';
+
+            const image = new Image();
+
+            image.alt = "Banana picture puzzle";
+            image.onload = function() {
+
+                if (gameFinished) return;
+
+                question.replaceChildren(image);
+
+                answerInput.disabled = false;
+                submitBtn.disabled = false;
+
+                answerInput.focus();
+
+                startTimer();
+                loading = false;
+            };
+
+            image.onerror = function() {
+
+                question.innerHTML =
+                    '<p class="loading-text">Puzzle image could not be displayed.</p>';
+
+                showMessage(
+                    "Unable to display the puzzle. Please try again.",
+                    "error"
+                );
+
+                retryBtn.style.display = "inline-block";
+                loading = false;
+            };
+
+            image.src = data.image;
+
+        } catch (error) {
+
+            question.innerHTML =
+                '<p class="loading-text">Puzzle could not be loaded.</p>';
+
+            showMessage(
+                error.message + " You can try loading another puzzle.",
+                "error"
+            );
+
+            retryBtn.style.display = "inline-block";
+
+            loading = false;
+        }
+    }
+
+    // Retry puzzle
+    retryBtn.addEventListener("click", function() {
+        loadPuzzle();
+    });
+
+    // Submit answer
     challengeForm.addEventListener("submit", async function(event) {
 
         event.preventDefault();
 
-        if (gameFinished) {
+        if (gameFinished || submitting || loading) {
             return;
         }
 
@@ -436,8 +730,15 @@ $alreadyCompleted = $stmt->fetch() !== false;
             return;
         }
 
+        submitting = true;
+        gameFinished = true;
+
+        clearInterval(countdown);
+
         submitBtn.disabled = true;
         answerInput.disabled = true;
+
+        timerStatus.textContent = "Checking answer...";
 
         try {
 
@@ -457,44 +758,63 @@ $alreadyCompleted = $stmt->fetch() !== false;
 
             const data = await response.json();
 
-            clearInterval(countdown);
-
-            gameFinished = true;
+            if (!response.ok) {
+                throw new Error(
+                    data.error || "Could not submit your answer."
+                );
+            }
 
             if (data.correct) {
 
                 let resultMessage =
-                    data.message +
+                    "🏆 " + data.message +
                     " You earned " + data.coins +
                     " coins and " + data.score + " points!";
 
                 if (data.event) {
-                    resultMessage += " 🎲 Random Event: " + data.event;
+                    resultMessage +=
+                        " 🎲 Random Event: " + data.event;
                 }
 
                 showMessage(resultMessage, "success");
 
+                timerStatus.textContent = "Completed";
+
+                // Show updated reward information
+                retryBtn.style.display = "none";
+
+                // Display navigation links
+                links.style.display = "block";
+
             } else {
 
                 showMessage(
-                    data.message || data.error || "Incorrect answer.",
+                    data.message || "Incorrect answer. Try again!",
                     "error"
                 );
 
-            }
+                timerStatus.textContent = "Challenge ended";
 
-            links.style.display = "block";
+                retryBtn.style.display = "inline-block";
+                retryBtn.textContent = "🔄 Try Another Puzzle";
+
+            }
 
         } catch (error) {
 
             showMessage(
-                "Something went wrong. Please try again.",
+                error.message + " You can try loading a new puzzle.",
                 "error"
             );
 
-            answerInput.disabled = false;
-            submitBtn.disabled = false;
+            timerStatus.textContent = "Submission failed";
+
+            retryBtn.style.display = "inline-block";
+
+        } finally {
+            submitting = false;
         }
+
     });
 
     // Load the first puzzle
