@@ -1,33 +1,51 @@
+
 <?php
 session_start();
 require_once "config/database.php";
 
 $message = "";
+$username = "";
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    $username = trim($_POST["username"]);
-    $password = $_POST["password"];
 
-    $stmt = $pdo->prepare(
-        "SELECT * FROM players WHERE username = ?"
-    );
-    $stmt->execute([$username]);
+    $username = trim($_POST["username"] ?? "");
+    $password = $_POST["password"] ?? "";
 
-    $player = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($username === "" || $password === "") {
 
-    if ($player && password_verify($password, $player["password"])) {
-        session_regenerate_id(true);
+        $message = "Please enter your username and password.";
 
-        $_SESSION["player_id"] = $player["player_id"];
-        $_SESSION["username"] = $player["username"];
-
-        header("Location: dashboard.php");
-        exit;
     } else {
-        $message = "Invalid username or password.";
+
+        $stmt = $pdo->prepare(
+            "SELECT player_id, username, password
+             FROM players
+             WHERE username = ? OR email = ?"
+        );
+
+        $stmt->execute([$username, $username]);
+
+        $player = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($player && password_verify($password, $player["password"])) {
+
+            session_regenerate_id(true);
+
+            $_SESSION["player_id"] = $player["player_id"];
+            $_SESSION["username"] = $player["username"];
+
+            header("Location: dashboard.php");
+            exit;
+
+        } else {
+
+            $message = "Invalid username/email or password.";
+
+        }
     }
 }
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">
