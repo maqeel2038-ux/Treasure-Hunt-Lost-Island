@@ -538,7 +538,18 @@ $currentStreak = (int)($_SESSION["game_streak"] ?? 0);
                 </button>
 
             </form>
+<div class="hint-section">
+    <button
+        type="button"
+        id="hintBtn"
+        class="game-button"
+        disabled
+    >
+        💡 Get a Hint
+    </button>
 
+    <p id="hintMessage"></p>
+</div>
             <button
                 type="button"
                 id="retryBtn"
