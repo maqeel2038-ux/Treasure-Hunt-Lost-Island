@@ -611,13 +611,22 @@ $currentStreak = (int)($_SESSION["game_streak"] ?? 0);
             </form>
 
             <button
-                type="button"
-                id="retryBtn"
-                class="game-button retry-button"
-                style="display:none;"
-            >
-                🔄 Try Another Puzzle
-            </button>
+    type="button"
+    id="retryBtn"
+    class="game-button retry-button"
+    style="display:none;"
+>
+    🔄 Try Another Puzzle
+</button>
+
+<button
+    type="button"
+    id="recoverEnergyBtn"
+    class="game-button"
+    style="display:none; margin-top:12px;"
+>
+    ⚡ Recover Energy (30 Coins)
+</button>
 
             <div id="message" class="message"></div>
 
@@ -656,6 +665,7 @@ const energyValue = document.getElementById("energyValue");
     const timerProgress = document.getElementById("timerProgress");
     const timerStatus = document.getElementById("timerStatus");
     const retryBtn = document.getElementById("retryBtn");
+    const recoverEnergyBtn = document.getElementById("recoverEnergyBtn");
     const links = document.getElementById("links");
 
     const streakCount = document.getElementById("streakCount");
@@ -744,117 +754,151 @@ const energyValue = document.getElementById("energyValue");
         }, 1000);
     }
 
-    // Load puzzle
     async function loadPuzzle() {
 
-        if (loading) return;
+    if (loading) return;
 
-        loading = true;
-        gameFinished = false;
-        submitting = false;
+    loading = true;
+    gameFinished = false;
+    submitting = false;
 
-        clearInterval(countdown);
-        resetTimer();
-        hideMessage();
+    clearInterval(countdown);
+    resetTimer();
+    hideMessage();
 
-        links.style.display = "none";
-        retryBtn.style.display = "none";
+    links.style.display = "none";
+    retryBtn.style.display = "none";
 
-        answerInput.value = "";
-        answerInput.disabled = true;
-        submitBtn.disabled = true;
+    answerInput.value = "";
+    answerInput.disabled = true;
+    submitBtn.disabled = true;
 
-        // Reset hint for the new puzzle
-        hintUsed = false;
-        hintBtn.disabled = true;
-        hintBtn.textContent = "💡 Get a Hint";
-        hintMessage.textContent = "";
+    // Reset hint for the new puzzle
+    hintUsed = false;
+    hintBtn.disabled = true;
+    hintBtn.textContent = "💡 Get a Hint";
+    hintMessage.textContent = "";
 
-        question.innerHTML =
-            '<p class="loading-text">⏳ Connecting to Banana API...</p>';
+    question.innerHTML =
+        '<p class="loading-text">⏳ Connecting to Banana API...</p>';
 
-        try {
+    try {
 
-            const response = await fetch(
-                "../api/puzzle.php?location=" +
-                encodeURIComponent(locationName),
-                {
-                    cache: "no-store"
-                }
-            );
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(
-                    data.error || "Could not load puzzle."
-                );
+        const response = await fetch(
+            "../api/puzzle.php?location=" +
+            encodeURIComponent(locationName),
+            {
+                cache: "no-store"
             }
+        );
 
-            if (!data.image) {
-                throw new Error("Puzzle image was not received.");
-            }
+        const data = await response.json();
 
-            question.innerHTML =
-                '<p class="loading-text">🧩 Loading puzzle image...</p>';
+        // Check for API errors
+        if (!response.ok) {
 
-            const image = new Image();
+            // Player has no energy
+            if (response.status === 403) {
 
-            image.alt = "Banana picture puzzle";
+            recoverEnergyBtn.style.display = "inline-block";
+retryBtn.style.display = "none";
 
-            image.onload = function() {
-
-                if (gameFinished) return;
-
-                question.replaceChildren(image);
-
-                answerInput.disabled = false;
-                submitBtn.disabled = false;
-
-                // Enable hint after puzzle loads
-                hintBtn.disabled = false;
-                hintUsed = false;
-                hintMessage.textContent = "";
-
-                answerInput.focus();
-
-                startTimer();
-
-                loading = false;
-            };
-
-            image.onerror = function() {
-
-                question.innerHTML =
-                    '<p class="loading-text">Puzzle image could not be displayed.</p>';
+                gameFinished = true;
 
                 showMessage(
-                    "Unable to display the puzzle. Please try again.",
+                    data.error ||
+                    "You're out of energy! Recover your energy before continuing.",
                     "error"
                 );
 
-                retryBtn.style.display = "inline-block";
+                timerStatus.textContent = "Out of energy";
+
+                submitBtn.disabled = true;
+                answerInput.disabled = true;
+                hintBtn.disabled = true;
+
+                retryBtn.style.display = "none";
+
+                question.innerHTML =
+                    '<p class="loading-text">⚡ You have no energy left!</p>';
 
                 loading = false;
-            };
+                return;
+            }
 
-            image.src = data.image;
+            throw new Error(
+                data.error || "Could not load puzzle."
+            );
+        }
 
-        } catch (error) {
+        // Check puzzle image
+        if (!data.image) {
+            throw new Error("Puzzle image was not received.");
+        }
+
+        question.innerHTML =
+            '<p class="loading-text">🧩 Loading puzzle image...</p>';
+
+        const image = new Image();
+
+        image.alt = "Banana picture puzzle";
+
+        image.onload = function() {
+
+            if (gameFinished) {
+                loading = false;
+                return;
+            }
+
+            question.replaceChildren(image);
+
+            answerInput.disabled = false;
+            submitBtn.disabled = false;
+
+            // Enable hint after puzzle loads
+            hintBtn.disabled = false;
+            hintUsed = false;
+            hintMessage.textContent = "";
+
+            answerInput.focus();
+
+            startTimer();
+
+            loading = false;
+        };
+
+        image.onerror = function() {
 
             question.innerHTML =
-                '<p class="loading-text">Puzzle could not be loaded.</p>';
+                '<p class="loading-text">Puzzle image could not be displayed.</p>';
 
             showMessage(
-                error.message + " You can try loading another puzzle.",
+                "Unable to display the puzzle. Please try again.",
                 "error"
             );
 
             retryBtn.style.display = "inline-block";
 
             loading = false;
-        }
+        };
+
+        image.src = data.image;
+
+    } catch (error) {
+
+        question.innerHTML =
+            '<p class="loading-text">Puzzle could not be loaded.</p>';
+
+        showMessage(
+            error.message + " You can try loading another puzzle.",
+            "error"
+        );
+
+        retryBtn.style.display = "inline-block";
+
+        loading = false;
     }
+}
 
     // Hint system
     hintBtn.addEventListener("click", function() {
@@ -876,6 +920,52 @@ const energyValue = document.getElementById("energyValue");
     retryBtn.addEventListener("click", function() {
         loadPuzzle();
     });
+
+    // Recover player energy
+recoverEnergyBtn.addEventListener("click", async function() {
+
+    recoverEnergyBtn.disabled = true;
+    recoverEnergyBtn.textContent = "Recovering...";
+
+    try {
+
+        const response = await fetch("../api/recover_energy.php", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            }
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+            throw new Error(data.message || "Energy recovery failed.");
+        }
+
+        // Update player statistics
+        energyValue.textContent = data.energy;
+        coinsValue.textContent = data.coins;
+
+        showMessage(
+            "⚡ " + data.message + " You recovered " +
+            data.recovered + " energy!",
+            "success"
+        );
+
+        recoverEnergyBtn.style.display = "none";
+        recoverEnergyBtn.textContent = "⚡ Recover Energy (30 Coins)";
+
+        // Load another puzzle
+        loadPuzzle();
+
+    } catch (error) {
+
+        showMessage(error.message, "error");
+
+        recoverEnergyBtn.disabled = false;
+        recoverEnergyBtn.textContent = "⚡ Recover Energy (30 Coins)";
+    }
+});
 
     // Submit answer
     challengeForm.addEventListener("submit", async function(event) {

@@ -4,6 +4,9 @@ session_start();
 
 header('Content-Type: application/json; charset=utf-8');
 
+// Database connection
+require_once "../config/database.php";
+
 // Send JSON error
 function sendError($message, $statusCode = 500) {
     http_response_code($statusCode);
@@ -18,6 +21,37 @@ function sendError($message, $statusCode = 500) {
 // Check login
 if (empty($_SESSION['player_id'])) {
     sendError('Please log in first.', 401);
+}
+
+// Check player's energy
+$playerId = $_SESSION['player_id'];
+
+try {
+    $stmt = $pdo->prepare("
+        SELECT energy
+        FROM players
+        WHERE player_id = ?
+    ");
+
+    $stmt->execute([$playerId]);
+
+    $energy = $stmt->fetchColumn();
+
+    if ($energy === false) {
+        sendError('Player account not found.', 404);
+    }
+
+    $energy = (int)$energy;
+
+    if ($energy <= 0) {
+        sendError(
+            'You are out of energy! Recover your energy before continuing.',
+            403
+        );
+    }
+
+} catch (PDOException $e) {
+    sendError('Could not check player energy.', 500);
 }
 
 // Validate location
@@ -116,7 +150,7 @@ $_SESSION['puzzle_event'] = $randomEvent;
 $_SESSION['puzzle_answer'] = (string)$data['solution'];
 $_SESSION['puzzle_open'] = true;
 
-// Reset hint state for the new puzzle
+// Reset hint state
 $_SESSION['hint_used'] = false;
 
 // Return image only
