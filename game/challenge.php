@@ -967,11 +967,16 @@ scoreValue.textContent =
                 }, 3000);
             } else {
 
-                // Update reset streak
-                if (data.streak !== undefined) {
-                    streakCount.textContent = data.streak;
-                    streakBonus.textContent = "0 coins";
-                }
+    // Update energy after incorrect answer
+    if (data.energy !== undefined) {
+        energyValue.textContent = data.energy;
+    }
+
+    // Update reset streak
+    if (data.streak !== undefined) {
+        streakCount.textContent = data.streak;
+        streakBonus.textContent = "0 coins";
+    }
 
                 showMessage(
                     data.message || "Incorrect answer. Try again!",
