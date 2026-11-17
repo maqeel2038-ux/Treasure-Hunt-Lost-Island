@@ -7,6 +7,28 @@ if (!isset($_SESSION["player_id"])) {
     exit;
 }
 
+// Get daily reward information
+$stmt = $pdo->prepare("
+    SELECT last_claim_date, login_streak
+    FROM daily_rewards
+    WHERE player_id = ?
+");
+
+$stmt->execute([$_SESSION["player_id"]]);
+
+$dailyReward = $stmt->fetch(PDO::FETCH_ASSOC);
+
+$today = date("Y-m-d");
+
+$claimedToday = (
+    $dailyReward &&
+    $dailyReward["last_claim_date"] === $today
+);
+
+$currentStreak = $dailyReward
+    ? (int)$dailyReward["login_streak"]
+    : 0;
+
 $stmt = $pdo->prepare(
     "SELECT username, coins, score, energy, current_location
      FROM players WHERE player_id = ?"
@@ -120,6 +142,46 @@ if (!$player) {
             </div>
 
         </section>
+        <!-- Daily Rewards Section -->
+<section class="dashboard-section daily-rewards-section">
+
+    <div class="section-heading">
+        <h2>🎁 Daily Explorer Rewards</h2>
+        <p>Return every day to collect coins and build your login streak!</p>
+    </div>
+
+    <div class="dashboard-feature">
+
+        <span class="feature-icon">🎁</span>
+
+        <h2>Claim Your Daily Reward</h2>
+
+        <p>
+            Collect 50 free coins every day.
+            Earn an additional 50 coins every 7 consecutive days!
+        </p>
+
+        <button
+    type="button"
+    id="claimRewardBtn"
+    class="explore-button"
+    <?php echo $claimedToday ? 'disabled' : ''; ?>
+>
+    <?php echo $claimedToday
+        ? '✓ REWARD CLAIMED'
+        : '🎁 CLAIM DAILY REWARD'; ?>
+</button>
+
+        <p id="rewardMessage" style="margin-top:15px;"></p>
+
+        <p id="streakDisplay">
+    🔥 Login streak:
+    <strong><?php echo $currentStreak; ?> days</strong>
+</p>
+
+    </div>
+
+</section>
 
         <section class="dashboard-bottom">
 
@@ -151,6 +213,57 @@ if (!$player) {
         </footer>
 
     </div>
+
+    <script>
+
+const claimRewardBtn = document.getElementById("claimRewardBtn");
+const rewardMessage = document.getElementById("rewardMessage");
+const streakDisplay = document.getElementById("streakDisplay");
+
+claimRewardBtn.addEventListener("click", async function() {
+
+    claimRewardBtn.disabled = true;
+    claimRewardBtn.textContent = "CLAIMING...";
+
+    try {
+
+        const response = await fetch("api/daily_reward.php", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            }
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+            throw new Error(data.message || "Could not claim reward.");
+        }
+
+        rewardMessage.textContent =
+            "🏆 " + data.message +
+            " You received " + data.reward + " coins!";
+
+        streakDisplay.innerHTML =
+            "🔥 Login streak: <strong>" + data.streak + " days</strong>";
+
+        claimRewardBtn.textContent = "✓ REWARD CLAIMED";
+        claimRewardBtn.disabled = true;
+
+        // Update displayed coins
+        location.reload();
+
+    } catch (error) {
+
+        rewardMessage.textContent = "⚠️ " + error.message;
+
+        claimRewardBtn.disabled = false;
+        claimRewardBtn.textContent = "🎁 CLAIM DAILY REWARD";
+    }
+
+});
+
+</script>
 
 </body>
 </html>
