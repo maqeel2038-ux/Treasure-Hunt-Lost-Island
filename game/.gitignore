@@ -1,0 +1,10 @@
+# Temporary Git backup
+temp-repo/
+
+# Local environment files
+.env
+
+# Temporary files
+*.log
+.DS_Store
+Thumbs.db

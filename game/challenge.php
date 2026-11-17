@@ -1,4 +1,3 @@
-
 <?php
 session_start();
 require_once "../config/database.php";
@@ -17,6 +16,7 @@ $stmt = $pdo->prepare(
      FROM players
      WHERE player_id = ?"
 );
+
 $stmt->execute([$player_id]);
 $player = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -65,14 +65,25 @@ if ($location === "LostTemple" && $score < 250) {
     exit();
 }
 
-// Check previous completion
-$stmt = $pdo->prepare(
-    "SELECT id FROM player_challenges
-     WHERE player_id = ? AND location = ?"
-);
-$stmt->execute([$player_id, $location]);
+// Calculate progress towards next island
+$nextIslandScore = 0;
+$progressPercentage = 100;
 
-$alreadyCompleted = $stmt->fetch() !== false;
+if ($location === "Beach") {
+    $nextIslandScore = 100;
+} elseif ($location === "HiddenJungle") {
+    $nextIslandScore = 250;
+}
+
+if ($nextIslandScore > 0) {
+    $progressPercentage = min(
+        100,
+        ($score / $nextIslandScore) * 100
+    );
+}
+
+// Allow unlimited puzzles
+$alreadyCompleted = false;
 
 // Difficulty and time limit
 $selectedDifficulty = $_SESSION["difficulty"] ?? "Easy";
@@ -89,7 +100,7 @@ if (!isset($timeLimit[$selectedDifficulty])) {
 
 $gameTime = $timeLimit[$selectedDifficulty];
 
-// Current session streak
+// Current streak
 $currentStreak = (int)($_SESSION["game_streak"] ?? 0);
 ?>
 
@@ -441,22 +452,45 @@ $currentStreak = (int)($_SESSION["game_streak"] ?? 0);
 
     <div class="stats">
 
-        <div class="stat">
-            🪙 Coins
-            <strong><?php echo (int)$player["coins"]; ?></strong>
-        </div>
-
-        <div class="stat">
-            ⭐ Score
-            <strong><?php echo (int)$player["score"]; ?></strong>
-        </div>
-
-        <div class="stat">
-            ⚡ Energy
-            <strong><?php echo (int)$player["energy"]; ?></strong>
-        </div>
-
+    <div class="stat">
+        🪙 Coins
+        <strong id="coinsValue"><?php echo (int)$player["coins"]; ?></strong>
     </div>
+
+    <div class="stat">
+        ⭐ Score
+        <strong id="scoreValue"><?php echo (int)$player["score"]; ?></strong>
+    </div>
+
+    <div class="stat">
+        ⚡ Energy
+        <strong id="energyValue"><?php echo (int)$player["energy"]; ?></strong>
+    </div>
+
+</div>
+
+    <div class="progress-section">
+    <h3>🏝️ Next Island Progress</h3>
+
+    <p>
+        <?php echo htmlspecialchars($player['score']); ?>
+        / <?php echo $nextIslandScore; ?> points
+    </p>
+
+    <div class="progress-bar">
+        <div class="progress-fill"
+             style="width: <?php echo $progressPercentage; ?>%;">
+        </div>
+    </div>
+
+    <?php if ($nextIslandScore > 0 && $progressPercentage >= 100): ?>
+        <p>🎉 Next island unlocked!</p>
+    <?php elseif ($nextIslandScore > 0): ?>
+        <p>Keep solving puzzles to unlock the next island!</p>
+    <?php else: ?>
+        <p>🏆 You have unlocked all islands!</p>
+    <?php endif; ?>
+</div>
 
     <div class="game-info">
 
@@ -611,6 +645,9 @@ $currentStreak = (int)($_SESSION["game_streak"] ?? 0);
     const gameTime = <?php echo (int)$gameTime; ?>;
 
     const question = document.getElementById("question");
+    const coinsValue = document.getElementById("coinsValue");
+const scoreValue = document.getElementById("scoreValue");
+const energyValue = document.getElementById("energyValue");
     const answerInput = document.getElementById("answer");
     const submitBtn = document.getElementById("submitBtn");
     const challengeForm = document.getElementById("challengeForm");
@@ -893,16 +930,21 @@ $currentStreak = (int)($_SESSION["game_streak"] ?? 0);
 
             if (data.correct) {
 
+            // Update coins and score immediately
+coinsValue.textContent =
+    Number(coinsValue.textContent) + Number(data.coins);
+
+scoreValue.textContent =
+    Number(scoreValue.textContent) + Number(data.score);
+
                 // Update streak information
                 streakCount.textContent = data.streak;
-                streakBonus.textContent =
-                    data.streak_bonus + " coins";
+                streakBonus.textContent = data.streak_bonus + " coins";
 
                 let resultMessage =
-                    "🏆 " + data.message +
-                    " You earned " + data.coins +
-                    " coins and " + data.score +
-                    " points!";
+                    "🏆 " + (data.message || "Correct answer!") +
+                    " You earned " + data.coins + " coins and " +
+                    data.score + " points!";
 
                 if (data.streak_bonus > 0) {
                     resultMessage +=
@@ -911,17 +953,18 @@ $currentStreak = (int)($_SESSION["game_streak"] ?? 0);
                 }
 
                 if (data.event) {
-                    resultMessage +=
-                        " 🎲 Random Event: " + data.event;
+                    resultMessage += " 🎲 Random Event: " + data.event;
                 }
 
                 showMessage(resultMessage, "success");
-
                 timerStatus.textContent = "Completed";
-
                 retryBtn.style.display = "none";
-                links.style.display = "block";
+                links.style.display = "none";
 
+                // Automatically load the next puzzle after 3 seconds
+                setTimeout(function() {
+                    loadPuzzle();
+                }, 3000);
             } else {
 
                 // Update reset streak
