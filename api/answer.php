@@ -93,24 +93,59 @@ $isCorrect = (
 );
 
 // Incorrect answer
+// Incorrect answer
 if (!$isCorrect) {
 
-    // Close and clear this puzzle
-    $_SESSION['puzzle_open'] = false;
+    try {
 
-    unset($_SESSION['puzzle_answer']);
-    unset($_SESSION['puzzle_event']);
+        // Deduct 10 energy
+        $energyPenalty = 10;
 
-    // Reset consecutive correct-answer streak
-    $_SESSION['game_streak'] = 0;
+        $stmt = $pdo->prepare("
+            UPDATE players
+            SET energy = GREATEST(energy - ?, 0)
+            WHERE player_id = ?
+        ");
 
-    echo json_encode([
-        'correct' => false,
-        'message' => 'Incorrect answer! Your streak has been reset.',
-        'streak' => 0
-    ]);
+        $stmt->execute([
+            $energyPenalty,
+            $playerId
+        ]);
 
-    exit;
+        // Get remaining energy
+        $stmt = $pdo->prepare("
+            SELECT energy
+            FROM players
+            WHERE player_id = ?
+        ");
+
+        $stmt->execute([$playerId]);
+
+        $remainingEnergy = (int)$stmt->fetchColumn();
+
+        // Close current puzzle
+        $_SESSION['puzzle_open'] = false;
+
+        unset($_SESSION['puzzle_answer']);
+        unset($_SESSION['puzzle_event']);
+
+        // Reset winning streak
+        $_SESSION['game_streak'] = 0;
+
+        echo json_encode([
+            'correct' => false,
+            'message' => 'Incorrect answer! You lost 10 energy.',
+            'streak' => 0,
+            'energy_lost' => $energyPenalty,
+            'energy' => $remainingEnergy
+        ]);
+
+        exit;
+
+    } catch (Throwable $e) {
+
+        sendError('Could not update your energy.', 500);
+    }
 }
 
 // Calculate base rewards
