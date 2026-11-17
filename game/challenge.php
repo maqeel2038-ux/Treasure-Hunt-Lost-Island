@@ -1045,6 +1045,15 @@ scoreValue.textContent =
                 if (data.event) {
                     resultMessage += " 🎲 Random Event: " + data.event;
                 }
+                // Display newly earned achievements
+if (data.achievements && data.achievements.length > 0) {
+
+    resultMessage += "\n🏅 NEW ACHIEVEMENT UNLOCKED!";
+
+    data.achievements.forEach(function(achievement) {
+        resultMessage += "\n" + achievement;
+    });
+}
 
                 showMessage(resultMessage, "success");
                 timerStatus.textContent = "Completed";

@@ -1,3 +1,4 @@
+
 <?php
 session_start();
 require_once "config/database.php";
@@ -15,7 +16,6 @@ $stmt = $pdo->prepare("
 ");
 
 $stmt->execute([$_SESSION["player_id"]]);
-
 $dailyReward = $stmt->fetch(PDO::FETCH_ASSOC);
 
 $today = date("Y-m-d");
@@ -29,10 +29,12 @@ $currentStreak = $dailyReward
     ? (int)$dailyReward["login_streak"]
     : 0;
 
-$stmt = $pdo->prepare(
-    "SELECT username, coins, score, energy, current_location
-     FROM players WHERE player_id = ?"
-);
+// Get player information
+$stmt = $pdo->prepare("
+    SELECT username, coins, score, energy, current_location
+    FROM players
+    WHERE player_id = ?
+");
 
 $stmt->execute([$_SESSION["player_id"]]);
 $player = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -41,6 +43,35 @@ if (!$player) {
     session_destroy();
     header("Location: login.php");
     exit;
+}
+
+// Get all achievements and the player's earned achievements
+$stmt = $pdo->prepare("
+    SELECT
+        a.achievement_id,
+        a.achievement_name,
+        a.description,
+        a.badge_icon,
+        a.requirement_type,
+        a.requirement_value,
+        pa.earned_at
+    FROM achievements a
+    LEFT JOIN player_achievements pa
+        ON a.achievement_id = pa.achievement_id
+        AND pa.player_id = ?
+    ORDER BY a.achievement_id ASC
+");
+
+$stmt->execute([$_SESSION["player_id"]]);
+$achievements = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Count earned achievements
+$earnedAchievements = 0;
+
+foreach ($achievements as $achievement) {
+    if ($achievement["earned_at"] !== null) {
+        $earnedAchievements++;
+    }
 }
 ?>
 
@@ -142,6 +173,73 @@ if (!$player) {
             </div>
 
         </section>
+
+
+<!-- Achievements Section -->
+<section class="dashboard-section achievements-section">
+
+    <div class="section-heading">
+        <h2>🏅 Explorer Achievements</h2>
+        <p>
+            Collect badges by completing challenges and exploring the islands.
+        </p>
+        <p>
+            <strong>
+                <?php echo $earnedAchievements; ?>
+                / <?php echo count($achievements); ?>
+            </strong>
+            Achievements Unlocked
+        </p>
+    </div>
+
+    <div class="dashboard-stats">
+
+        <?php foreach ($achievements as $achievement): ?>
+
+            <?php
+                $isEarned = $achievement["earned_at"] !== null;
+            ?>
+
+            <div class="dashboard-stat achievement-card">
+
+                <span class="stat-icon">
+                    <?php echo htmlspecialchars($achievement["badge_icon"]); ?>
+                </span>
+
+                <p>
+                    <?php echo $isEarned ? "UNLOCKED" : "LOCKED"; ?>
+                </p>
+
+                <h2>
+                    <?php echo htmlspecialchars($achievement["achievement_name"]); ?>
+                </h2>
+
+                <span>
+                    <?php echo htmlspecialchars($achievement["description"]); ?>
+                </span>
+
+                <?php if ($isEarned): ?>
+
+                    <p style="color: #28a745; margin-top: 12px;">
+                        ✓ Achievement Earned
+                    </p>
+
+                <?php else: ?>
+
+                    <p style="color: #aaa; margin-top: 12px;">
+                        🔒 Not Unlocked Yet
+                    </p>
+
+                <?php endif; ?>
+
+            </div>
+
+        <?php endforeach; ?>
+
+    </div>
+
+</section>
+
         <!-- Daily Rewards Section -->
 <section class="dashboard-section daily-rewards-section">
 

@@ -285,7 +285,108 @@ try {
     }
 
     // Commit database changes
-    $pdo->commit();
+    // Check and award achievements before committing
+// Check and award achievements before committing
+$achievementMessages = [];
+
+// Get completed puzzle count
+$stmt = $pdo->prepare("
+    SELECT COUNT(*)
+    FROM player_challenges
+    WHERE player_id = ?
+");
+$stmt->execute([$playerId]);
+$totalPuzzles = (int)$stmt->fetchColumn();
+
+// Get current player coins and score
+$stmt = $pdo->prepare("
+    SELECT coins, score
+    FROM players
+    WHERE player_id = ?
+");
+$stmt->execute([$playerId]);
+$playerStats = $stmt->fetch(PDO::FETCH_ASSOC);
+
+$totalCoins = (int)$playerStats['coins'];
+$totalScore = (int)$playerStats['score'];
+
+// Get daily login streak
+$stmt = $pdo->prepare("
+    SELECT login_streak
+    FROM daily_rewards
+    WHERE player_id = ?
+");
+$stmt->execute([$playerId]);
+$loginStreak = (int)$stmt->fetchColumn();
+
+// Calculate unlocked islands
+$totalIslands = 1;
+
+if ($totalScore >= 100) {
+    $totalIslands = 2;
+}
+
+if ($totalScore >= 250) {
+    $totalIslands = 3;
+}
+
+// Get all achievements
+$stmt = $pdo->query("
+    SELECT achievement_id, achievement_name,
+           badge_icon, requirement_type, requirement_value
+    FROM achievements
+");
+
+$achievements = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Check each achievement
+foreach ($achievements as $achievement) {
+
+    $currentValue = 0;
+
+    switch ($achievement['requirement_type']) {
+
+        case 'puzzles':
+            $currentValue = $totalPuzzles;
+            break;
+
+        case 'coins':
+            $currentValue = $totalCoins;
+            break;
+
+        case 'streak':
+            $currentValue = $loginStreak;
+            break;
+
+        case 'islands':
+            $currentValue = $totalIslands;
+            break;
+    }
+
+    if ($currentValue >= (int)$achievement['requirement_value']) {
+
+        $stmt = $pdo->prepare("
+            INSERT IGNORE INTO player_achievements
+                (player_id, achievement_id)
+            VALUES (?, ?)
+        ");
+
+        $stmt->execute([
+            $playerId,
+            $achievement['achievement_id']
+        ]);
+
+        if ($stmt->rowCount() > 0) {
+
+            $achievementMessages[] =
+                $achievement['badge_icon'] . ' ' .
+                $achievement['achievement_name'];
+        }
+    }
+}
+
+// Commit database changes
+$pdo->commit();
 
     // Close puzzle and remove answer from session
     $_SESSION['puzzle_open'] = false;
@@ -314,7 +415,8 @@ try {
         'score' => $score,
         'difficulty' => $difficulty,
         'event' => $eventDescription,
-        'event_name' => $eventName
+'event_name' => $eventName,
+'achievements' => $achievementMessages
     ]);
 
 } catch (Throwable $e) {
