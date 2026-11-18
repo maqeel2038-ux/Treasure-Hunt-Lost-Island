@@ -97,11 +97,12 @@ foreach ($achievements as $achievement) {
             </div>
 
             <nav class="dashboard-nav">
-                <a href="dashboard.php">Dashboard</a>
-                <a href="game/island.php">Islands</a>
-                <a href="leaderboard.php">Leaderboard</a>
-                <a href="logout.php" class="logout-button">Logout</a>
-            </nav>
+    <a href="dashboard.php">Dashboard</a>
+    <a href="game/island.php">Islands</a>
+    <a href="leaderboard.php">Leaderboard</a>
+    <a href="profile.php">My Profile</a>
+    <a href="logout.php" class="logout-button">Logout</a>
+</nav>
 
         </header>
 
