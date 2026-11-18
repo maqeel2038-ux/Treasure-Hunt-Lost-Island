@@ -1056,6 +1056,22 @@ if (data.achievements && data.achievements.length > 0) {
 }
 
                 showMessage(resultMessage, "success");
+
+                if (data.game_completed) {
+    timerStatus.textContent = "🏆 VICTORY!";
+
+    showMessage(
+        "🏆 Congratulations! You conquered all three islands!",
+        "success"
+    );
+
+    setTimeout(function() {
+        window.location.href = "../victory.php";
+    }, 3000);
+
+    return;
+}
+
                 timerStatus.textContent = "Completed";
                 retryBtn.style.display = "none";
                 links.style.display = "none";

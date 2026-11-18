@@ -385,6 +385,77 @@ foreach ($achievements as $achievement) {
     }
 }
 
+// Check game completion
+$gameCompleted = false;
+
+// Count completed islands
+$stmt = $pdo->prepare("
+    SELECT COUNT(DISTINCT location)
+    FROM player_challenges
+    WHERE player_id = ?
+      AND location IN ('Beach', 'HiddenJungle', 'LostTemple')
+");
+
+$stmt->execute([$playerId]);
+
+$completedIslands = (int)$stmt->fetchColumn();
+
+// Check if a victory record already exists
+$stmt = $pdo->prepare("
+    SELECT completion_id
+    FROM game_completions
+    WHERE player_id = ?
+    LIMIT 1
+");
+
+$stmt->execute([$playerId]);
+
+$alreadyWon = $stmt->fetch();
+
+// Save victory only when all 3 islands are completed
+if ($completedIslands >= 3 && !$alreadyWon) {
+
+    // Get total puzzles solved
+    $stmt = $pdo->prepare("
+        SELECT COUNT(*)
+        FROM player_challenges
+        WHERE player_id = ?
+    ");
+
+    $stmt->execute([$playerId]);
+
+    $finalPuzzleCount = (int)$stmt->fetchColumn();
+
+    // Get final player score
+    $stmt = $pdo->prepare("
+        SELECT score
+        FROM players
+        WHERE player_id = ?
+    ");
+
+    $stmt->execute([$playerId]);
+
+    $finalScore = (int)$stmt->fetchColumn();
+
+    // Save game completion
+    $stmt = $pdo->prepare("
+        INSERT INTO game_completions
+            (player_id, final_score, coins_earned,
+             puzzles_solved, islands_completed)
+        VALUES (?, ?, ?, ?, ?)
+    ");
+
+    $stmt->execute([
+        $playerId,
+        $finalScore,
+        $coins,
+        $finalPuzzleCount,
+        $completedIslands
+    ]);
+
+    $gameCompleted = true;
+}
+
 // Commit database changes
 $pdo->commit();
 
@@ -405,19 +476,20 @@ $pdo->commit();
 
     // Return reward information
     echo json_encode([
-        'correct' => true,
-        'message' => 'Correct answer! Treasure unlocked!',
-        'coins' => $coins,
-        'base_coins' => $rewards[$location]['coins'] *
-                        $multipliers[$difficulty],
-        'streak_bonus' => $streakBonus,
-        'streak' => $streak,
-        'score' => $score,
-        'difficulty' => $difficulty,
-        'event' => $eventDescription,
-'event_name' => $eventName,
-'achievements' => $achievementMessages
-    ]);
+    'correct' => true,
+    'message' => 'Correct answer! Treasure unlocked!',
+    'coins' => $coins,
+    'base_coins' => $rewards[$location]['coins'] *
+                    $multipliers[$difficulty],
+    'streak_bonus' => $streakBonus,
+    'streak' => $streak,
+    'score' => $score,
+    'difficulty' => $difficulty,
+    'event' => $eventDescription,
+    'event_name' => $eventName,
+    'achievements' => $achievementMessages,
+    'game_completed' => $gameCompleted
+]);
 
 } catch (Throwable $e) {
 
