@@ -117,321 +117,489 @@ $currentStreak = (int)($_SESSION["game_streak"] ?? 0);
     </title>
 
     <link rel="stylesheet" href="../assets/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap"
+      rel="stylesheet">
 
-    <style>
-        * {
-            box-sizing: border-box;
-        }
+    
+<style>
+    * {
+        box-sizing: border-box;
+    }
 
+    body {
+        background:
+            radial-gradient(circle at 10% 0%, rgba(45, 95, 150, 0.22), transparent 35%),
+            radial-gradient(circle at 90% 90%, rgba(255, 198, 41, 0.06), transparent 30%),
+            #0b1426;
+        color: #f1f5f9;
+        font-family: 'Outfit', sans-serif;
+        padding: 20px;
+        min-height: 100vh;
+    }
+
+    .challenge-container {
+        max-width: 1000px;
+        margin: 25px auto;
+        background: rgba(19, 34, 56, 0.92);
+        padding: 32px;
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 24px;
+        text-align: center;
+        box-shadow: 0 25px 70px rgba(0,0,0,0.35);
+    }
+
+    .game-brand {
+        color: #FFC629;
+        letter-spacing: 3px;
+        font-size: 12px;
+        font-weight: 800;
+        margin-bottom: 18px;
+    }
+
+    h1 {
+        color: #ffffff;
+        font-size: clamp(28px, 4vw, 40px);
+        font-weight: 900;
+        margin-bottom: 12px;
+    }
+
+    .subtitle {
+        color: #91a4bd;
+        margin-bottom: 25px;
+        font-size: 15px;
+    }
+
+    /* PLAYER STATS */
+
+    .stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 15px;
+        margin: 25px 0;
+    }
+
+    .stat {
+        background: #1c2e49;
+        padding: 20px 12px;
+        border-radius: 16px;
+        border: 1px solid rgba(255,255,255,0.07);
+        color: #91a4bd;
+        font-size: 13px;
+        transition: 0.3s;
+    }
+
+    .stat:hover {
+        border-color: rgba(255,198,41,0.3);
+        transform: translateY(-3px);
+    }
+
+    .stat strong {
+        display: block;
+        color: #FFC629;
+        font-size: 26px;
+        font-weight: 800;
+        margin-top: 9px;
+    }
+
+    /* ISLAND PROGRESS */
+
+    .progress-section {
+        background: #172740;
+        border: 1px solid rgba(255,255,255,0.07);
+        border-radius: 15px;
+        padding: 20px;
+        margin: 25px 0;
+    }
+
+    .progress-section h3 {
+        color: #FFC629;
+        font-size: 16px;
+        margin: 0 0 12px;
+    }
+
+    .progress-section p {
+        color: #91a4bd;
+        font-size: 13px;
+    }
+
+    .progress-bar {
+        height: 9px;
+        background: #30425f;
+        border-radius: 20px;
+        overflow: hidden;
+        margin: 15px 0;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #d99c13, #FFC629);
+        border-radius: 20px;
+        transition: width 0.5s;
+    }
+
+    /* GAME INFO */
+
+    .game-info {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin: 22px 0;
+    }
+
+    .info-badge {
+        background: #203454;
+        border: 1px solid rgba(255,255,255,0.07);
+        padding: 11px 17px;
+        border-radius: 30px;
+        font-size: 13px;
+        color: #b8c6d9;
+    }
+
+    .info-badge strong {
+        color: #FFC629;
+    }
+
+    /* MAIN GAME */
+
+    .game-card {
+        background: #14243d;
+        border: 1px solid rgba(255,255,255,0.07);
+        border-radius: 20px;
+        padding: 28px;
+        margin-top: 25px;
+    }
+
+    .game-card h2 {
+        font-size: 23px;
+        color: #ffffff;
+        margin: 0 0 10px;
+    }
+
+    .game-card > p {
+        color: #91a4bd;
+        font-size: 14px;
+        line-height: 1.7;
+    }
+
+    /* STREAK */
+
+    .streak-panel {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        background: linear-gradient(135deg, #302449, #203454);
+        border: 1px solid rgba(255,198,41,0.25);
+        border-radius: 16px;
+        padding: 20px;
+        margin: 25px 0;
+    }
+
+    .streak-panel div {
+        color: #cbd5e1;
+        font-size: 13px;
+    }
+
+    .streak-panel strong {
+        display: block;
+        color: #FFC629;
+        font-size: 27px;
+        font-weight: 800;
+        margin-top: 8px;
+    }
+
+    /* TIMER */
+
+    .timer-heading {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 5px;
+        font-size: 12px;
+        color: #91a4bd;
+        font-weight: 700;
+        letter-spacing: 1px;
+    }
+
+    #timer {
+        color: #FFC629;
+        font-size: 52px;
+        font-weight: 900;
+        margin: 15px 0;
+        font-variant-numeric: tabular-nums;
+        transition: color 0.3s;
+    }
+
+    .timer-track {
+        width: 100%;
+        height: 10px;
+        background: #30425f;
+        border-radius: 20px;
+        overflow: hidden;
+    }
+
+    .timer-progress {
+        width: 100%;
+        height: 100%;
+        background: #FFC629;
+        transition: width 1s linear, background 0.3s;
+        border-radius: 20px;
+    }
+
+    /* PUZZLE */
+
+    .question {
+        min-height: 280px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 28px 0;
+        background:
+            radial-gradient(circle, rgba(55,90,130,0.25), transparent 70%),
+            #0e1b30;
+        border: 1px solid rgba(255,255,255,0.07);
+        border-radius: 18px;
+        padding: 20px;
+        overflow: hidden;
+    }
+
+    .question img {
+        max-width: 100%;
+        width: 460px;
+        max-height: 400px;
+        object-fit: contain;
+        border-radius: 12px;
+        background: white;
+        box-shadow: 0 10px 35px rgba(0,0,0,0.25);
+    }
+
+    .loading-text {
+        color: #FFC629;
+        font-size: 15px;
+        line-height: 1.7;
+    }
+
+    /* ANSWER */
+
+    .answer-input {
+        width: 100%;
+        padding: 17px;
+        background: #0d192c;
+        color: #ffffff;
+        border: 2px solid #30425f;
+        border-radius: 12px;
+        font-size: 17px;
+        margin: 15px 0;
+        text-align: center;
+        outline: none;
+        transition: border-color 0.3s, box-shadow 0.3s;
+    }
+
+    .answer-input::placeholder {
+        color: #647790;
+    }
+
+    .answer-input:focus {
+        border-color: #FFC629;
+        box-shadow: 0 0 0 4px rgba(255,198,41,0.08);
+    }
+
+    /* BUTTONS */
+
+    .game-button {
+        display: inline-block;
+        background: #FFC629;
+        color: #142033;
+        padding: 14px 25px;
+        border: none;
+        border-radius: 11px;
+        font-family: 'Outfit', sans-serif;
+        font-size: 14px;
+        font-weight: 800;
+        cursor: pointer;
+        margin: 6px;
+        transition: 0.25s;
+    }
+
+    .game-button:hover {
+        transform: translateY(-2px);
+        background: #ffda69;
+        box-shadow: 0 6px 20px rgba(255,198,41,0.12);
+    }
+
+    .game-button:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+
+    .retry-button {
+        background: #3b82b5;
+        color: white;
+    }
+
+    .retry-button:hover {
+        background: #559bd0;
+    }
+
+    /* HINT */
+
+    .hint-section {
+        margin: 20px 0;
+    }
+
+    .hint-button {
+        background: #284f7d;
+        color: #d9eaff;
+    }
+
+    .hint-button:hover {
+        background: #3b6da0;
+        color: white;
+    }
+
+    #hintMessage {
+        color: #FFC629;
+        font-size: 14px;
+        margin-top: 12px;
+        line-height: 1.7;
+    }
+
+    /* MESSAGE */
+
+    .message {
+        padding: 17px;
+        border-radius: 12px;
+        margin: 20px 0;
+        line-height: 1.7;
+        display: none;
+        white-space: pre-line;
+        font-size: 14px;
+    }
+
+    .success {
+        display: block;
+        background: rgba(22, 130, 75, 0.18);
+        border: 1px solid #299c62;
+        color: #85f0b5;
+    }
+
+    .error {
+        display: block;
+        background: rgba(160, 40, 40, 0.18);
+        border: 1px solid #b94b4b;
+        color: #ffaaaa;
+    }
+
+    /* LINKS */
+
+    .links {
+        margin-top: 25px;
+    }
+
+    .links a {
+        display: inline-block;
+        color: #FFC629;
+        margin: 10px;
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 14px;
+    }
+
+    .links a:hover {
+        text-decoration: underline;
+    }
+
+    .game-instructions {
+        color: #7288a4;
+        font-size: 12px;
+        margin-top: 22px;
+        line-height: 1.7;
+    }
+
+    /* MOBILE */
+
+    @media (max-width: 600px) {
         body {
-            background:
-                radial-gradient(circle at top right, #263f67, transparent 35%),
-                #101d38;
-            color: white;
-            font-family: Arial, sans-serif;
-            padding: 20px;
-            min-height: 100vh;
+            padding: 10px;
         }
 
         .challenge-container {
-            max-width: 850px;
-            margin: 30px auto;
-            background: #1e2d49;
-            padding: 35px;
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 20px;
-            text-align: center;
-            box-shadow: 0 15px 40px rgba(0,0,0,0.25);
-        }
-
-        .game-brand {
-            color: #ffc629;
-            letter-spacing: 2px;
-            font-size: 13px;
-            font-weight: bold;
-        }
-
-        h1 {
-            color: #ffc629;
-            margin-bottom: 10px;
-        }
-
-        .subtitle {
-            color: #aab6cc;
-            margin-bottom: 25px;
+            padding: 20px 14px;
+            margin: 10px auto;
+            border-radius: 17px;
         }
 
         .stats {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
-            margin: 25px 0;
+            gap: 8px;
         }
 
         .stat {
-            background: #263a5d;
-            padding: 18px 10px;
-            border-radius: 12px;
-            border: 1px solid rgba(255,255,255,0.08);
+            padding: 14px 5px;
+            font-size: 11px;
         }
 
         .stat strong {
-            display: block;
-            color: #ffc629;
-            font-size: 22px;
-            margin-top: 8px;
+            font-size: 20px;
         }
 
         .game-info {
-            display: flex;
-            justify-content: center;
-            flex-wrap: wrap;
-            gap: 12px;
-            margin: 25px 0;
+            gap: 7px;
         }
 
         .info-badge {
-            background: #263a5d;
-            padding: 10px 18px;
-            border-radius: 20px;
-            font-size: 13px;
-        }
-
-        .info-badge strong {
-            color: #ffc629;
+            padding: 9px 11px;
+            font-size: 11px;
         }
 
         .game-card {
-            background: #152440;
-            border-radius: 15px;
-            padding: 25px;
-            margin-top: 25px;
+            padding: 18px 13px;
         }
 
-        /* Streak panel */
-        .streak-panel {
-            display: flex;
-            justify-content: space-around;
-            gap: 15px;
-            flex-wrap: wrap;
-            background: linear-gradient(135deg, #46315f, #263a5d);
-            border: 1px solid #ffc629;
-            border-radius: 12px;
-            padding: 18px;
-            margin: 20px 0;
-        }
-
-        .streak-panel div {
-            color: #ffffff;
-            font-size: 14px;
-        }
-
-        .streak-panel strong {
-            display: block;
-            color: #ffc629;
-            font-size: 24px;
-            margin-top: 8px;
-        }
-
-        .timer-heading {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-            font-size: 13px;
-            color: #aab6cc;
-        }
-
-        #timer {
-            color: #ffc629;
-            font-size: 40px;
-            font-weight: bold;
-            margin: 15px 0;
-            font-variant-numeric: tabular-nums;
-        }
-
-        .timer-track {
-            width: 100%;
-            height: 9px;
-            background: #344563;
-            border-radius: 20px;
-            overflow: hidden;
-        }
-
-        .timer-progress {
-            width: 100%;
-            height: 100%;
-            background: #ffc629;
-            transition: width 1s linear;
-            border-radius: 20px;
+        .game-card h2 {
+            font-size: 20px;
         }
 
         .question {
-            min-height: 230px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin: 25px 0;
-            background: #203454;
-            border-radius: 12px;
-            padding: 15px;
+            min-height: 200px;
+            padding: 10px;
         }
 
         .question img {
-            max-width: 100%;
-            width: 420px;
-            max-height: 350px;
-            object-fit: contain;
-            border-radius: 10px;
-            background: white;
+            max-height: 300px;
         }
 
-        .loading-text {
-            color: #ffc629;
-            font-size: 16px;
+        #timer {
+            font-size: 40px;
+        }
+
+        .streak-panel {
+            padding: 15px 8px;
+            gap: 8px;
+        }
+
+        .streak-panel strong {
+            font-size: 22px;
         }
 
         .answer-input {
-            width: 100%;
-            padding: 16px;
-            border: 2px solid #344563;
-            border-radius: 10px;
-            font-size: 17px;
-            margin: 15px 0;
-            text-align: center;
-            outline: none;
-        }
-
-        .answer-input:focus {
-            border-color: #ffc629;
+            font-size: 16px;
         }
 
         .game-button {
-            display: inline-block;
-            background: #ffc629;
-            color: #101d38;
-            padding: 14px 25px;
-            border: none;
-            border-radius: 9px;
-            font-size: 15px;
-            font-weight: bold;
-            cursor: pointer;
-            margin: 6px;
-            transition: 0.2s;
+            width: 100%;
+            margin: 7px 0;
         }
+    }
 
-        .game-button:hover {
-            transform: translateY(-2px);
-            background: #ffdb70;
+    @media (prefers-reduced-motion: reduce) {
+        * {
+            transition: none !important;
         }
+    }
+</style>
 
-        .game-button:disabled {
-            opacity: 0.45;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .retry-button {
-            background: #3b82b5;
-            color: white;
-        }
-
-        /* Hint system */
-        .hint-section {
-            margin: 20px 0;
-        }
-
-        .hint-button {
-            background: #3b82b5;
-            color: white;
-        }
-
-        .hint-button:hover {
-            background: #559bd0;
-        }
-
-        #hintMessage {
-            color: #ffc629;
-            font-size: 14px;
-            margin-top: 12px;
-            line-height: 1.6;
-        }
-
-        .message {
-            padding: 16px;
-            border-radius: 10px;
-            margin: 20px 0;
-            line-height: 1.6;
-            display: none;
-        }
-
-        .success {
-            display: block;
-            background: #155d3b;
-            border: 1px solid #299c62;
-        }
-
-        .error {
-            display: block;
-            background: #7b2525;
-            border: 1px solid #b94b4b;
-        }
-
-        .links {
-            margin-top: 25px;
-        }
-
-        .links a {
-            display: inline-block;
-            color: #ffc629;
-            margin: 10px;
-            text-decoration: none;
-            font-weight: bold;
-        }
-
-        .links a:hover {
-            text-decoration: underline;
-        }
-
-        .game-instructions {
-            color: #aab6cc;
-            font-size: 13px;
-            margin-top: 20px;
-            line-height: 1.6;
-        }
-
-        @media (max-width: 600px) {
-            .challenge-container {
-                padding: 20px 15px;
-                margin: 10px auto;
-            }
-
-            .stats {
-                gap: 8px;
-            }
-
-            .stat {
-                padding: 13px 5px;
-                font-size: 12px;
-            }
-
-            .stat strong {
-                font-size: 18px;
-            }
-
-            .game-card {
-                padding: 15px;
-            }
-
-            .question {
-                min-height: 180px;
-            }
-
-            #timer {
-                font-size: 32px;
-            }
-        }
-    </style>
 </head>
 
 <body>

@@ -1,4 +1,3 @@
-
 <?php
 session_start();
 require_once "config/database.php";
@@ -43,10 +42,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["update_username"])) {
 
             $stmt->execute([$newUsername, $playerId]);
 
-$_SESSION["username"] = $newUsername;
+            $_SESSION["username"] = $newUsername;
 
-$message = "Username updated successfully!";
-$messageType = "success";
+            $message = "Username updated successfully!";
+            $messageType = "success";
         }
     }
 }
@@ -128,139 +127,347 @@ if (!$player) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Player Profile | Treasure Hunt</title>
 
     <link rel="stylesheet" href="assets/css/style.css">
 
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap"
+          rel="stylesheet">
+
     <style>
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: #101D38;
+            color: white;
+        }
+
         .profile-container {
-            max-width: 1100px;
+            max-width: 1000px;
             margin: 40px auto;
             padding: 20px;
         }
 
-        .profile-heading {
-            margin-bottom: 30px;
+        .profile-back {
+            display: inline-block;
+            color: #AAB8D0;
+            text-decoration: none;
+            margin-bottom: 25px;
+            transition: 0.2s;
         }
 
-        .profile-heading h1 {
+        .profile-back:hover {
             color: #FFC629;
-            font-size: 30px;
         }
 
-        .profile-heading p {
-            color: #c5cde0;
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 22px;
+            padding: 30px;
+            background: linear-gradient(135deg, #263A5D, #1A2B49);
+            border: 1px solid #3A5073;
+            border-radius: 22px;
+            margin-bottom: 25px;
+        }
+
+        .profile-avatar {
+            width: 90px;
+            height: 90px;
+            flex-shrink: 0;
+            border-radius: 50%;
+            background: rgba(255,198,41,0.12);
+            border: 2px solid #FFC629;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 42px;
+        }
+
+        .profile-header-text h1 {
+            font-size: 30px;
+            font-weight: 900;
+            color: #FFC629;
+            margin: 0 0 8px;
+            overflow-wrap: anywhere;
+        }
+
+        .profile-header-text p {
+            color: #AAB8D0;
+            margin: 0;
+        }
+
+        .player-tag {
+            display: inline-block;
+            margin-top: 12px;
+            background: rgba(255,198,41,0.12);
+            border: 1px solid rgba(255,198,41,0.25);
+            color: #FFC629;
+            padding: 6px 12px;
+            border-radius: 30px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .profile-message {
+            padding: 15px 18px;
+            border-radius: 12px;
+            margin-bottom: 22px;
+            font-weight: 600;
+        }
+
+        .profile-message.success {
+            background: rgba(40,167,69,0.12);
+            border: 1px solid rgba(40,167,69,0.3);
+            color: #65E58B;
+        }
+
+        .profile-message.error {
+            background: rgba(220,53,69,0.12);
+            border: 1px solid rgba(220,53,69,0.3);
+            color: #FF7777;
         }
 
         .profile-card {
-            background: #263A5D;
-            border: 1px solid rgba(255,198,41,0.2);
-            border-radius: 15px;
+            background: #1A2B49;
+            border: 1px solid #314565;
+            border-radius: 20px;
             padding: 25px;
             margin-bottom: 25px;
         }
 
-        .profile-card h2 {
+        .profile-card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 22px;
+        }
+
+        .section-icon {
+            width: 43px;
+            height: 43px;
+            background: rgba(255,198,41,0.1);
+            border: 1px solid rgba(255,198,41,0.2);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .profile-card-header h2 {
+            font-size: 21px;
             color: #FFC629;
-            margin-bottom: 20px;
+            margin: 0;
+            font-weight: 800;
         }
 
         .profile-info {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 20px;
+            gap: 15px;
         }
 
-        .profile-info div {
+        .info-item {
             background: #101D38;
+            border: 1px solid #2C405F;
+            border-radius: 13px;
             padding: 18px;
-            border-radius: 10px;
+            min-width: 0;
         }
 
-        .profile-info span {
+        .info-item span {
             display: block;
-            color: #aaa;
-            font-size: 13px;
+            color: #91A3BF;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        .info-item strong {
+            display: block;
+            color: white;
+            font-size: 16px;
+            font-weight: 700;
+            overflow-wrap: anywhere;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+        }
+
+        .stat-card {
+            background: #101D38;
+            border: 1px solid #2C405F;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            transition: 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            border-color: rgba(255,198,41,0.4);
+        }
+
+        .stat-icon {
+            font-size: 27px;
+            margin-bottom: 12px;
+        }
+
+        .stat-label {
+            color: #91A3BF;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.8px;
             margin-bottom: 8px;
         }
 
-        .profile-info strong {
-            color: white;
+        .stat-value {
+            color: #FFC629;
+            font-size: 23px;
+            font-weight: 900;
             overflow-wrap: anywhere;
+        }
+
+        .stat-card.location .stat-value {
+            font-size: 15px;
+            color: #65D6A0;
         }
 
         .profile-form {
             display: flex;
             flex-direction: column;
-            gap: 12px;
-            max-width: 500px;
+            gap: 13px;
+            max-width: 550px;
         }
 
         .profile-form label {
-            color: white;
+            color: #C5D1E3;
+            font-size: 14px;
+            font-weight: 600;
         }
 
         .profile-form input {
-            padding: 13px;
-            border-radius: 8px;
-            border: 1px solid #526586;
-            background: #101D38;
-            color: white;
-            font-size: 15px;
             width: 100%;
             box-sizing: border-box;
+            padding: 14px 16px;
+            border-radius: 11px;
+            border: 1px solid #3A5073;
+            background: #101D38;
+            color: white;
+            font-family: 'Outfit', sans-serif;
+            font-size: 15px;
+            outline: none;
+            transition: 0.2s;
+        }
+
+        .profile-form input:focus {
+            border-color: #FFC629;
+            box-shadow: 0 0 0 3px rgba(255,198,41,0.08);
+        }
+
+        .profile-form input::placeholder {
+            color: #7185A4;
         }
 
         .profile-form button {
-            padding: 13px;
+            padding: 14px 18px;
+            margin-top: 8px;
             background: #FFC629;
             color: #101D38;
             border: none;
-            border-radius: 8px;
-            font-weight: bold;
+            border-radius: 11px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 15px;
+            font-weight: 800;
             cursor: pointer;
-            margin-top: 8px;
+            transition: 0.2s;
         }
 
         .profile-form button:hover {
-            background: #e6ad13;
+            background: #E6AD13;
+            transform: translateY(-2px);
         }
 
-        .profile-message {
-            padding: 14px;
-            border-radius: 8px;
-            margin-bottom: 20px;
+        .form-description {
+            color: #91A3BF;
+            font-size: 13px;
+            margin: -5px 0 5px;
         }
 
-        .profile-message.success {
-            background: rgba(40,167,69,0.15);
-            color: #65e58b;
+        .profile-footer {
+            text-align: center;
+            color: #7185A4;
+            font-size: 13px;
+            margin: 30px 0 10px;
         }
 
-        .profile-message.error {
-            background: rgba(220,53,69,0.15);
-            color: #ff7777;
-        }
-
-        .profile-back {
-            display: inline-block;
-            color: #FFC629;
-            text-decoration: none;
-            margin-bottom: 25px;
+        @media (max-width: 800px) {
+            .stat-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
         }
 
         @media (max-width: 600px) {
+            .profile-container {
+                padding: 14px;
+                margin: 20px auto;
+            }
+
+            .profile-header {
+                padding: 22px;
+                gap: 15px;
+            }
+
+            .profile-avatar {
+                width: 65px;
+                height: 65px;
+                font-size: 30px;
+            }
+
+            .profile-header-text h1 {
+                font-size: 23px;
+            }
+
+            .profile-card {
+                padding: 18px;
+                border-radius: 16px;
+            }
+
+            .profile-card-header h2 {
+                font-size: 18px;
+            }
+
             .profile-info {
                 grid-template-columns: 1fr;
+                gap: 12px;
             }
 
-            .profile-container {
-                padding: 15px;
-                margin-top: 20px;
+            .stat-grid {
+                gap: 10px;
             }
 
-            .profile-heading h1 {
-                font-size: 24px;
+            .stat-card {
+                padding: 15px 10px;
+            }
+
+            .stat-value {
+                font-size: 20px;
+            }
+
+            .stat-icon {
+                font-size: 23px;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                transition: none !important;
             }
         }
     </style>
@@ -274,40 +481,67 @@ if (!$player) {
         ← Back to Dashboard
     </a>
 
-    <div class="profile-heading">
-        <h1>👤 Player Profile</h1>
-        <p>Manage your explorer account and personal information.</p>
-    </div>
+    <!-- Profile Header -->
+    <header class="profile-header">
 
+        <div class="profile-avatar">
+            👤
+        </div>
+
+        <div class="profile-header-text">
+
+            <h1>
+                <?php echo htmlspecialchars($player["username"]); ?>
+            </h1>
+
+            <p>Manage your explorer account and personal information.</p>
+
+            <span class="player-tag">
+                🏝️ ISLAND EXPLORER
+            </span>
+
+        </div>
+
+    </header>
+
+    <!-- Messages -->
     <?php if ($message !== ""): ?>
+
         <div class="profile-message <?php echo htmlspecialchars($messageType); ?>">
             <?php echo htmlspecialchars($message); ?>
         </div>
+
     <?php endif; ?>
 
-    <!-- Player Information -->
+    <!-- Account Information -->
     <section class="profile-card">
 
-        <h2>👤 Account Information</h2>
+        <div class="profile-card-header">
+
+            <div class="section-icon">👤</div>
+
+            <h2>Account Information</h2>
+
+        </div>
 
         <div class="profile-info">
 
-            <div>
+            <div class="info-item">
                 <span>PLAYER ID</span>
-                <strong><?php echo (int)$player["player_id"]; ?></strong>
+                <strong>#<?php echo (int)$player["player_id"]; ?></strong>
             </div>
 
-            <div>
+            <div class="info-item">
                 <span>USERNAME</span>
                 <strong><?php echo htmlspecialchars($player["username"]); ?></strong>
             </div>
 
-            <div>
+            <div class="info-item">
                 <span>EMAIL ADDRESS</span>
                 <strong><?php echo htmlspecialchars($player["email"]); ?></strong>
             </div>
 
-            <div>
+            <div class="info-item">
                 <span>REGISTRATION DATE</span>
                 <strong>
                     <?php echo date("d M Y", strtotime($player["created_at"])); ?>
@@ -318,31 +552,65 @@ if (!$player) {
 
     </section>
 
-    <!-- Game Statistics -->
+    <!-- Explorer Statistics -->
     <section class="profile-card">
 
-        <h2>🏆 Explorer Statistics</h2>
+        <div class="profile-card-header">
 
-        <div class="profile-info">
+            <div class="section-icon">🏆</div>
 
-            <div>
-                <span>GOLD COINS</span>
-                <strong>🪙 <?php echo (int)$player["coins"]; ?></strong>
+            <h2>Explorer Statistics</h2>
+
+        </div>
+
+        <div class="stat-grid">
+
+            <div class="stat-card">
+
+                <div class="stat-icon">🪙</div>
+
+                <div class="stat-label">GOLD COINS</div>
+
+                <div class="stat-value">
+                    <?php echo (int)$player["coins"]; ?>
+                </div>
+
             </div>
 
-            <div>
-                <span>TOTAL SCORE</span>
-                <strong>🏆 <?php echo (int)$player["score"]; ?></strong>
+            <div class="stat-card">
+
+                <div class="stat-icon">🏆</div>
+
+                <div class="stat-label">TOTAL SCORE</div>
+
+                <div class="stat-value">
+                    <?php echo (int)$player["score"]; ?>
+                </div>
+
             </div>
 
-            <div>
-                <span>ENERGY</span>
-                <strong>⚡ <?php echo (int)$player["energy"]; ?>%</strong>
+            <div class="stat-card">
+
+                <div class="stat-icon">⚡</div>
+
+                <div class="stat-label">ENERGY</div>
+
+                <div class="stat-value">
+                    <?php echo (int)$player["energy"]; ?>%
+                </div>
+
             </div>
 
-            <div>
-                <span>CURRENT LOCATION</span>
-                <strong><?php echo htmlspecialchars($player["current_location"]); ?></strong>
+            <div class="stat-card location">
+
+                <div class="stat-icon">🏝️</div>
+
+                <div class="stat-label">CURRENT LOCATION</div>
+
+                <div class="stat-value">
+                    <?php echo htmlspecialchars($player["current_location"]); ?>
+                </div>
+
             </div>
 
         </div>
@@ -352,9 +620,19 @@ if (!$player) {
     <!-- Update Username -->
     <section class="profile-card">
 
-        <h2>✏️ Update Username</h2>
+        <div class="profile-card-header">
+
+            <div class="section-icon">✏️</div>
+
+            <h2>Update Username</h2>
+
+        </div>
 
         <form method="POST" class="profile-form">
+
+            <p class="form-description">
+                Choose a unique username between 3 and 30 characters.
+            </p>
 
             <label for="username">New Username</label>
 
@@ -369,7 +647,7 @@ if (!$player) {
             >
 
             <button type="submit" name="update_username">
-                Update Username
+                ✏️ Update Username
             </button>
 
         </form>
@@ -379,9 +657,19 @@ if (!$player) {
     <!-- Change Password -->
     <section class="profile-card">
 
-        <h2>🔐 Change Password</h2>
+        <div class="profile-card-header">
+
+            <div class="section-icon">🔐</div>
+
+            <h2>Change Password</h2>
+
+        </div>
 
         <form method="POST" class="profile-form">
+
+            <p class="form-description">
+                Your new password must contain at least 8 characters.
+            </p>
 
             <label for="current_password">Current Password</label>
 
@@ -389,6 +677,7 @@ if (!$player) {
                 type="password"
                 id="current_password"
                 name="current_password"
+                placeholder="Enter current password"
                 required
             >
 
@@ -398,6 +687,7 @@ if (!$player) {
                 type="password"
                 id="new_password"
                 name="new_password"
+                placeholder="Enter new password"
                 minlength="8"
                 required
             >
@@ -408,17 +698,22 @@ if (!$player) {
                 type="password"
                 id="confirm_password"
                 name="confirm_password"
+                placeholder="Confirm new password"
                 minlength="8"
                 required
             >
 
             <button type="submit" name="change_password">
-                Change Password
+                🔐 Change Password
             </button>
 
         </form>
 
     </section>
+
+    <p class="profile-footer">
+        Treasure Hunt: The Lost Island · Keep exploring! 🏝️
+    </p>
 
 </div>
 
