@@ -1,4 +1,3 @@
-
 <?php
 session_start();
 
@@ -7,19 +6,33 @@ if (!isset($_SESSION["player_id"])) {
     exit();
 }
 
+// Get selected island
+$location = $_GET["location"] ?? $_POST["location"] ?? "";
+
+$allowedLocations = ["Beach", "HiddenJungle", "LostTemple"];
+
+if (!in_array($location, $allowedLocations, true)) {
+    header("Location: island.php");
+    exit();
+}
+
+// Save selected difficulty
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
+
     $difficulty = $_POST["difficulty"] ?? "";
 
-    $allowed = ["Easy", "Medium", "Hard"];
+    $allowedDifficulties = ["Easy", "Medium", "Hard"];
 
-    if (in_array($difficulty, $allowed, true)) {
+    if (in_array($difficulty, $allowedDifficulties, true)) {
+
         $_SESSION["difficulty"] = $difficulty;
 
-        header("Location: island.php");
+        header("Location: challenge.php?location=" . urlencode($location));
         exit();
     }
 }
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -449,6 +462,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     <!-- DIFFICULTY CARDS -->
     <form method="POST">
+    <input type="hidden" name="location"
+           value="<?php echo htmlspecialchars($location); ?>">
 
         <div class="difficulty-grid">
 

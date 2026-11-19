@@ -663,7 +663,7 @@ $templeUnlocked = $score >= 250;
 
                     </div>
 
-                    <a href="challenge.php?location=Beach"
+                    <a href="difficulty.php?location=Beach"
                        class="explore-btn">
                         🏖️ Explore Beach
                     </a>
@@ -724,7 +724,7 @@ $templeUnlocked = $score >= 250;
 
                     <?php if ($jungleUnlocked): ?>
 
-                        <a href="challenge.php?location=HiddenJungle"
+                        <a href="difficulty.php?location=HiddenJungle"
                            class="explore-btn">
                             🌴 Explore Jungle
                         </a>
@@ -793,7 +793,7 @@ $templeUnlocked = $score >= 250;
 
                     <?php if ($templeUnlocked): ?>
 
-                        <a href="challenge.php?location=LostTemple"
+                        <a href="difficulty.php?location=LostTemple"
                            class="explore-btn">
                             🏛️ Explore Temple
                         </a>

@@ -1,23 +1,22 @@
+
 <?php
 session_start();
 require_once "../config/database.php";
 
 // Check login
-if (!isset($_SESSION["player_id"])) {
+if (empty($_SESSION["player_id"])) {
     header("Location: ../login.php");
     exit();
 }
 
-$player_id = $_SESSION["player_id"];
-
-// Get player information
+// Get complete player information
 $stmt = $pdo->prepare(
     "SELECT username, coins, score, energy
      FROM players
      WHERE player_id = ?"
 );
 
-$stmt->execute([$player_id]);
+$stmt->execute([$_SESSION["player_id"]]);
 $player = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$player) {
@@ -26,8 +25,10 @@ if (!$player) {
     exit();
 }
 
-// Island details
-$location = $_GET["location"] ?? "Beach";
+$score = (int)$player["score"];
+
+// Get selected island
+$location = $_GET["location"] ?? $_POST["location"] ?? "";
 
 $challenges = [
     "Beach" => [
@@ -35,11 +36,11 @@ $challenges = [
         "difficulty" => "Beginner"
     ],
     "HiddenJungle" => [
-        "name" => "Hidden Jungle",
+        "name" => "The Hidden Jungle",
         "difficulty" => "Intermediate"
     ],
     "LostTemple" => [
-        "name" => "Lost Temple",
+        "name" => "The Lost Temple",
         "difficulty" => "Advanced"
     ]
 ];
@@ -53,8 +54,6 @@ if (!isset($challenges[$location])) {
 $challenge = $challenges[$location];
 
 // Check island unlocking requirements
-$score = (int)$player["score"];
-
 if ($location === "HiddenJungle" && $score < 100) {
     header("Location: island.php");
     exit();
@@ -65,43 +64,56 @@ if ($location === "LostTemple" && $score < 250) {
     exit();
 }
 
-// Calculate progress towards next island
-$nextIslandScore = 0;
-$progressPercentage = 100;
-
+// Calculate next island progress
 if ($location === "Beach") {
     $nextIslandScore = 100;
 } elseif ($location === "HiddenJungle") {
     $nextIslandScore = 250;
+} else {
+    $nextIslandScore = 0;
 }
 
-if ($nextIslandScore > 0) {
-    $progressPercentage = min(
-        100,
-        ($score / $nextIslandScore) * 100
-    );
-}
+$progressPercentage = $nextIslandScore > 0
+    ? min(100, ($score / $nextIslandScore) * 100)
+    : 100;
 
-// Allow unlimited puzzles
-$alreadyCompleted = false;
-
-// Difficulty and time limit
+// Selected difficulty
 $selectedDifficulty = $_SESSION["difficulty"] ?? "Easy";
 
-$timeLimit = [
+$difficultyTimes = [
     "Easy" => 60,
     "Medium" => 45,
     "Hard" => 30
 ];
 
-if (!isset($timeLimit[$selectedDifficulty])) {
+if (!isset($difficultyTimes[$selectedDifficulty])) {
     $selectedDifficulty = "Easy";
 }
 
-$gameTime = $timeLimit[$selectedDifficulty];
+$gameTime = $difficultyTimes[$selectedDifficulty];
 
-// Current streak
+// Game progress
+$alreadyCompleted = false;
+
 $currentStreak = (int)($_SESSION["game_streak"] ?? 0);
+
+// Save selected difficulty if submitted
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
+
+    $difficulty = $_POST["difficulty"] ?? "";
+
+    if (isset($difficultyTimes[$difficulty])) {
+
+        $_SESSION["difficulty"] = $difficulty;
+
+        header(
+            "Location: challenge.php?location=" .
+            urlencode($location)
+        );
+
+        exit();
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -378,6 +390,141 @@ $currentStreak = (int)($_SESSION["game_streak"] ?? 0);
         font-size: 15px;
         line-height: 1.7;
     }
+/* GAME MODE SELECTOR */
+
+.mode-selector {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: 25px 0;
+}
+
+.mode-button {
+    background: #203454;
+    color: #cbd5e1;
+    border: 1px solid #30425f;
+    padding: 13px 22px;
+    border-radius: 12px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.25s;
+}
+
+.mode-button.active {
+    background: #FFC629;
+    color: #142033;
+    border-color: #FFC629;
+}
+
+.mode-button:hover {
+    transform: translateY(-2px);
+}
+
+.trivia-question {
+    color: #ffffff;
+    font-size: 19px;
+    font-weight: 700;
+    line-height: 1.6;
+}
+
+.trivia-category {
+    color: #FFC629;
+    font-size: 12px;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.trivia-options {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    width: 100%;
+}
+
+.trivia-option {
+    background: #203454;
+    color: #ffffff;
+    border: 2px solid #30425f;
+    padding: 16px;
+    border-radius: 12px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 14px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.trivia-option:hover:not(:disabled) {
+    border-color: #FFC629;
+    background: #284366;
+}
+
+.trivia-option.selected {
+    border-color: #FFC629;
+    background: rgba(255,198,41,0.15);
+}
+
+.trivia-option:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+@media (max-width: 600px) {
+    .trivia-options {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+/* TREASURE DICTIONARY */
+
+.dictionary-panel {
+    background: #172740;
+    border: 1px solid rgba(255,198,41,0.2);
+    border-radius: 16px;
+    padding: 22px;
+    margin-top: 25px;
+    text-align: left;
+}
+
+.dictionary-panel h3 {
+    color: #FFC629;
+    margin-top: 0;
+    text-align: center;
+}
+
+.dictionary-input {
+    width: 100%;
+    padding: 14px;
+    background: #0d192c;
+    color: white;
+    border: 2px solid #30425f;
+    border-radius: 10px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 15px;
+    margin: 10px 0;
+}
+
+.dictionary-result {
+    display: none;
+    background: #203454;
+    padding: 16px;
+    border-radius: 12px;
+    margin-top: 15px;
+    line-height: 1.7;
+    color: #cbd5e1;
+}
+
+.dictionary-result strong {
+    color: #FFC629;
+}
+
+.dictionary-result p {
+    margin-bottom: 0;
+}
 
     /* ANSWER */
 
@@ -679,6 +826,28 @@ $currentStreak = (int)($_SESSION["game_streak"] ?? 0);
 
     </div>
 
+
+    <!-- GAME NAVIGATION -->
+<div class="game-navigation">
+
+    <a href="island.php" class="game-button">
+        ← Back to Island
+    </a>
+
+    <a href="../dashboard.php" class="game-button">
+        🏠 Dashboard
+    </a>
+
+    <button
+        type="button"
+        class="game-button retry-button"
+        onclick="if(confirm('Are you sure you want to finish this game and return to the dashboard?')) { window.location.href='../dashboard.php'; }"
+    >
+        🏁 Finish Game
+    </button>
+
+</div>
+
     <?php if ($alreadyCompleted): ?>
 
         <div class="message success">
@@ -695,11 +864,31 @@ $currentStreak = (int)($_SESSION["game_streak"] ?? 0);
 
         <div class="game-card">
 
-            <h2>🧩 Solve the Banana Puzzle</h2>
+    <div class="mode-selector">
 
-            <p>
-                Look carefully at the picture and enter the correct answer.
-            </p>
+        <button
+            type="button"
+            id="bananaModeBtn"
+            class="mode-button active"
+        >
+            🍌 Banana Puzzle
+        </button>
+
+        <button
+            type="button"
+            id="triviaModeBtn"
+            class="mode-button"
+        >
+            🧠 Trivia Challenge
+        </button>
+
+    </div>
+
+    <h2 id="gameTitle">🧩 Solve the Banana Puzzle</h2>
+
+            <p id="gameDescription">
+    Look carefully at the picture and enter the correct answer.
+</p>
 
             <!-- Streak system -->
             <div class="streak-panel">
@@ -805,6 +994,37 @@ $currentStreak = (int)($_SESSION["game_streak"] ?? 0);
 
         </div>
 
+
+<div class="dictionary-panel">
+
+    <h3>📖 Treasure Dictionary</h3>
+
+    <p style="color:#91a4bd; text-align:center; font-size:13px;">
+        Discover the meaning of unfamiliar words during your adventure.
+    </p>
+
+    <input
+        type="text"
+        id="dictionaryWord"
+        class="dictionary-input"
+        placeholder="Enter a word (e.g. treasure)"
+        maxlength="50"
+    >
+
+    <button
+        type="button"
+        id="dictionarySearchBtn"
+        class="game-button"
+        style="width:100%;"
+    >
+        🔍 Search Meaning
+    </button>
+
+    <div id="dictionaryResult" class="dictionary-result"></div>
+
+</div>
+
+
         <div class="links" id="links" style="display:none;">
             <a href="island.php">← Back to Island</a>
             <a href="../dashboard.php">Dashboard</a>
@@ -820,6 +1040,15 @@ $currentStreak = (int)($_SESSION["game_streak"] ?? 0);
     const locationName = <?php echo json_encode($location); ?>;
     const difficulty = <?php echo json_encode($selectedDifficulty); ?>;
     const gameTime = <?php echo (int)$gameTime; ?>;
+    // Game mode elements
+const bananaModeBtn = document.getElementById("bananaModeBtn");
+const triviaModeBtn = document.getElementById("triviaModeBtn");
+const gameTitle = document.getElementById("gameTitle");
+const gameDescription = document.getElementById("gameDescription");
+
+// Current game mode
+let currentMode = "banana";
+let selectedTriviaAnswer = "";
 
     const question = document.getElementById("question");
     const coinsValue = document.getElementById("coinsValue");
@@ -843,12 +1072,111 @@ const energyValue = document.getElementById("energyValue");
     const hintBtn = document.getElementById("hintBtn");
     const hintMessage = document.getElementById("hintMessage");
 
+// Treasure Dictionary elements
+const dictionaryWord = document.getElementById("dictionaryWord");
+const dictionarySearchBtn = document.getElementById("dictionarySearchBtn");
+const dictionaryResult = document.getElementById("dictionaryResult");
+
+// Search Dictionary API
+dictionarySearchBtn.addEventListener("click", async function() {
+
+    const word = dictionaryWord.value.trim();
+
+    if (!word) {
+        dictionaryResult.style.display = "block";
+        dictionaryResult.textContent = "Please enter a word.";
+        return;
+    }
+
+    dictionarySearchBtn.disabled = true;
+    dictionarySearchBtn.textContent = "Searching...";
+
+    dictionaryResult.style.display = "block";
+    dictionaryResult.textContent = "Looking up the word...";
+
+    try {
+
+        const response = await fetch(
+            "../api/dictionary.php?word=" + encodeURIComponent(word),
+            { cache: "no-store" }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || "Word not found.");
+        }
+
+        dictionaryResult.replaceChildren();
+
+        const heading = document.createElement("strong");
+        heading.textContent = data.word + " (" + data.part_of_speech + ")";
+
+        const definition = document.createElement("p");
+        definition.textContent = data.definition;
+
+        dictionaryResult.append(heading, definition);
+
+    } catch (error) {
+
+        dictionaryResult.textContent = error.message;
+
+    } finally {
+
+        dictionarySearchBtn.disabled = false;
+        dictionarySearchBtn.textContent = "🔍 Search Meaning";
+
+    }
+
+});
+
+
     let timeLeft = gameTime;
     let countdown = null;
     let gameFinished = false;
     let loading = false;
     let submitting = false;
     let hintUsed = false;
+    // Switch between Banana Puzzle and Trivia modes
+function switchGameMode(mode) {
+
+    if (loading || submitting) {
+        return;
+    }
+
+    currentMode = mode;
+
+    bananaModeBtn.classList.toggle("active", mode === "banana");
+    triviaModeBtn.classList.toggle("active", mode === "trivia");
+
+    if (mode === "banana") {
+
+        gameTitle.textContent = "🧩 Solve the Banana Puzzle";
+
+        gameDescription.textContent =
+            "Look carefully at the picture and enter the correct answer.";
+
+    } else {
+
+        gameTitle.textContent = "🧠 Trivia Challenge";
+
+        gameDescription.textContent =
+            "Answer the multiple-choice question before time runs out.";
+
+    }
+
+    loadCurrentChallenge();
+}
+
+// Mode button events
+bananaModeBtn.addEventListener("click", function() {
+    switchGameMode("banana");
+});
+
+triviaModeBtn.addEventListener("click", function() {
+    console.log("Trivia button clicked!");
+    switchGameMode("trivia");
+});
 
     // Display messages
     function showMessage(text, type) {
@@ -938,8 +1266,9 @@ const energyValue = document.getElementById("energyValue");
     retryBtn.style.display = "none";
 
     answerInput.value = "";
-    answerInput.disabled = true;
-    submitBtn.disabled = true;
+answerInput.style.display = "block";
+answerInput.disabled = true;
+submitBtn.disabled = true;
 
     // Reset hint for the new puzzle
     hintUsed = false;
@@ -1068,6 +1397,151 @@ retryBtn.style.display = "none";
     }
 }
 
+// Load a Trivia question from Open Trivia DB
+async function loadTrivia() {
+
+    if (loading) return;
+
+    loading = true;
+    gameFinished = false;
+    submitting = false;
+    selectedTriviaAnswer = "";
+
+    clearInterval(countdown);
+    resetTimer();
+    hideMessage();
+
+    links.style.display = "none";
+    retryBtn.style.display = "none";
+    recoverEnergyBtn.style.display = "none";
+
+    answerInput.value = "";
+    answerInput.style.display = "none";
+    answerInput.disabled = true;
+    submitBtn.disabled = true;
+
+    hintBtn.disabled = true;
+    hintMessage.textContent = "";
+
+    question.innerHTML =
+        '<p class="loading-text">🧠 Loading trivia question...</p>';
+
+    try {
+
+        const response = await fetch(
+            "../api/trivia.php?location=" +
+            encodeURIComponent(locationName),
+            { cache: "no-store" }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+
+            if (response.status === 403) {
+
+                gameFinished = true;
+
+                showMessage(
+                    data.error || "You are out of energy!",
+                    "error"
+                );
+
+                question.innerHTML =
+                    '<p class="loading-text">⚡ You have no energy left!</p>';
+
+                recoverEnergyBtn.style.display = "inline-block";
+                timerStatus.textContent = "Out of energy";
+
+                loading = false;
+                return;
+            }
+
+            throw new Error(data.error || "Could not load trivia.");
+        }
+
+        if (!data.question || !Array.isArray(data.answers) ||
+            data.answers.length !== 4) {
+            throw new Error("Invalid trivia question received.");
+        }
+
+        const category = document.createElement("div");
+        category.className = "trivia-category";
+        category.textContent =
+            data.category + " • " + data.difficulty;
+
+        const questionText = document.createElement("div");
+        questionText.className = "trivia-question";
+        questionText.textContent = data.question;
+
+        const optionsContainer = document.createElement("div");
+        optionsContainer.className = "trivia-options";
+
+        question.replaceChildren(
+            category,
+            questionText,
+            optionsContainer
+        );
+
+        data.answers.forEach(function(answer) {
+
+            const option = document.createElement("button");
+
+            option.type = "button";
+            option.className = "trivia-option";
+            option.textContent = answer;
+
+            option.addEventListener("click", function() {
+
+                if (gameFinished || submitting) return;
+
+                selectedTriviaAnswer = answer;
+                answerInput.value = answer;
+
+                document.querySelectorAll(".trivia-option")
+                    .forEach(function(button) {
+                        button.classList.remove("selected");
+                    });
+
+                option.classList.add("selected");
+
+                submitBtn.disabled = false;
+            });
+
+            optionsContainer.appendChild(option);
+
+        });
+
+        startTimer();
+
+        submitBtn.disabled = true;
+
+        loading = false;
+
+    } catch (error) {
+
+        question.innerHTML =
+            '<p class="loading-text">Trivia question could not be loaded.</p>';
+
+        showMessage(error.message, "error");
+
+        retryBtn.style.display = "inline-block";
+
+        loading = false;
+    }
+}
+
+// Load the selected game mode
+function loadCurrentChallenge() {
+
+    if (currentMode === "trivia") {
+        loadTrivia();
+    } else {
+        loadPuzzle();
+    }
+
+}
+
     // Hint system
     hintBtn.addEventListener("click", function() {
 
@@ -1084,10 +1558,10 @@ retryBtn.style.display = "none";
         hintBtn.textContent = "Hint Used";
     });
 
-    // Retry puzzle
-    retryBtn.addEventListener("click", function() {
-        loadPuzzle();
-    });
+    // Retry the current challenge mode
+retryBtn.addEventListener("click", function() {
+    loadCurrentChallenge();
+});
 
     // Recover player energy
 recoverEnergyBtn.addEventListener("click", async function() {
@@ -1244,10 +1718,10 @@ if (data.achievements && data.achievements.length > 0) {
                 retryBtn.style.display = "none";
                 links.style.display = "none";
 
-                // Automatically load the next puzzle after 3 seconds
-                setTimeout(function() {
-                    loadPuzzle();
-                }, 3000);
+                // Automatically load the next challenge in the current mode
+setTimeout(function() {
+    loadCurrentChallenge();
+}, 3000);
             } else {
 
     // Update energy after incorrect answer
@@ -1289,8 +1763,8 @@ if (data.achievements && data.achievements.length > 0) {
 
     });
 
-    // Load first puzzle
-    loadPuzzle();
+    // Load the first challenge using the selected mode
+loadCurrentChallenge();
 
 </script>
 

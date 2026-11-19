@@ -1,4 +1,3 @@
-
 <?php
 session_start();
 require_once "config/database.php";
@@ -18,7 +17,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     } else {
 
         $stmt = $pdo->prepare(
-            "SELECT player_id, username, password
+            "SELECT player_id, username, password,
+                    two_factor_enabled, two_factor_secret
              FROM players
              WHERE username = ? OR email = ?"
         );
@@ -29,13 +29,33 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
         if ($player && password_verify($password, $player["password"])) {
 
+            // Start a fresh, restricted login session
             session_regenerate_id(true);
 
-            $_SESSION["player_id"] = $player["player_id"];
-            $_SESSION["username"] = $player["username"];
+            // Remove any previous authenticated session
+            unset($_SESSION["player_id"], $_SESSION["username"]);
 
-            header("Location: dashboard.php");
-            exit;
+            if (
+                (int)$player["two_factor_enabled"] === 1 &&
+                !empty($player["two_factor_secret"])
+            ) {
+
+                // Existing 2FA account
+                $_SESSION["pending_2fa_player_id"] = $player["player_id"];
+                $_SESSION["pending_2fa_username"] = $player["username"];
+
+                header("Location: two_factor_login.php");
+                exit;
+
+            } else {
+
+                // Account must configure 2FA first
+                $_SESSION["pending_setup_player_id"] = $player["player_id"];
+                $_SESSION["pending_setup_username"] = $player["username"];
+
+                header("Location: two_factor_setup.php");
+                exit;
+            }
 
         } else {
 
@@ -45,6 +65,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     }
 }
 ?>
+
 
 
 

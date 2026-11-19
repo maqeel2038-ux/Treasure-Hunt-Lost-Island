@@ -23,8 +23,37 @@ if (empty($_SESSION['player_id'])) {
     sendError('Please log in first.', 401);
 }
 
-// Check player's energy
+// Check player's energy and score
 $playerId = $_SESSION['player_id'];
+
+try {
+    $stmt = $pdo->prepare("
+        SELECT energy, score
+        FROM players
+        WHERE player_id = ?
+    ");
+
+    $stmt->execute([$playerId]);
+
+    $player = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$player) {
+        sendError('Player account not found.', 404);
+    }
+
+    $energy = (int)$player['energy'];
+    $score = (int)$player['score'];
+
+    if ($energy <= 0) {
+        sendError(
+            'You are out of energy! Recover your energy before continuing.',
+            403
+        );
+    }
+
+} catch (PDOException $e) {
+    sendError('Could not check player information.', 500);
+}
 
 try {
     $stmt = $pdo->prepare("
@@ -65,6 +94,15 @@ $allowedLocations = [
 
 if (!in_array($location, $allowedLocations, true)) {
     sendError('Invalid location.', 400);
+}
+
+// Check island unlocking requirements
+if ($location === 'HiddenJungle' && $score < 100) {
+    sendError('Hidden Jungle is locked. Reach 100 points first.', 403);
+}
+
+if ($location === 'LostTemple' && $score < 250) {
+    sendError('Lost Temple is locked. Reach 250 points first.', 403);
 }
 
 // Banana API URL

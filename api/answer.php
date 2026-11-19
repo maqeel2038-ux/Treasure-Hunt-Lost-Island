@@ -57,6 +57,32 @@ $event = $_SESSION['puzzle_event'] ?? null;
 
 $playerId = (int)$_SESSION['player_id'];
 
+// Verify player account and current score
+$stmt = $pdo->prepare("
+    SELECT score
+    FROM players
+    WHERE player_id = ?
+");
+
+$stmt->execute([$playerId]);
+
+$player = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if (!$player) {
+    sendError('Player account not found.', 404);
+}
+
+$currentScore = (int)$player['score'];
+
+// Verify island unlocking requirements
+if ($location === 'HiddenJungle' && $currentScore < 100) {
+    sendError('Hidden Jungle is locked.', 403);
+}
+
+if ($location === 'LostTemple' && $currentScore < 250) {
+    sendError('Lost Temple is locked.', 403);
+}
+
 // Validate island rewards
 $rewards = [
     'Beach' => [

@@ -800,9 +800,9 @@ $energy = max(0, min(100, (int)$player["energy"]));
                 Your next adventure awaits!
             </p>
 
-            <a href="game/difficulty.php" class="explore-button">
-                🗺️ START EXPLORING
-            </a>
+            <a href="game/island.php" class="explore-button">
+    🗺️ START EXPLORING
+</a>
 
         </div>
 
